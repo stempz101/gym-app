@@ -1,0 +1,35 @@
+[
+  {
+    "userId": 1,
+    "firstName": "John",
+    "lastName": "Doe",
+    "username": "John.Doe",
+    "password": "zpxZzJQ3gv",
+    "specialization": {
+      "name": "Bodybuilding"
+    },
+    "active": true
+  },
+  {
+    "userId": 2,
+    "firstName": "Jessica",
+    "lastName": "Rodriguez",
+    "username": "Jessica.Rodriguez2",
+    "password": "94c7sHTeY0",
+    "specialization": {
+      "name": "CrossFit"
+    },
+    "active": true
+  },
+  {
+    "userId": 3,
+    "firstName": "Daniel",
+    "lastName": "Thompson",
+    "username": "Daniel.Thompson",
+    "password": "ZKj9nuryNC",
+    "specialization": {
+      "name": "Strength Training"
+    },
+    "active": true
+  }
+]

@@ -1,0 +1,42 @@
+[
+  {
+    "userId": 1,
+    "firstName": "Michael",
+    "lastName": "Patel",
+    "username": "Michael.Patel",
+    "password": "uTlOfjgZg2",
+    "dateOfBirth": "2001-07-09",
+    "address": "Deribasovska St, 1, Odesa",
+    "active": true
+  },
+  {
+    "userId": 2,
+    "firstName": "Ashley",
+    "lastName": "Wilson",
+    "username": "Ashley.Wilson",
+    "password": "QZ2TWVlyFX",
+    "dateOfBirth": "2000-03-20",
+    "address": "Hrets'ka St, 56, Odesa",
+    "active": true
+  },
+  {
+    "userId": 3,
+    "firstName": "Christopher",
+    "lastName": "Lee",
+    "username": "Christopher.Lee4",
+    "password": "mVsYvgvjmQ",
+    "dateOfBirth": "1999-09-05",
+    "address": "Kanatna St, 4, Odesa",
+    "active": true
+  },
+  {
+    "userId": 4,
+    "firstName": "Sarah",
+    "lastName": "Nguyen",
+    "username": "Sarah.Nguyen",
+    "password": "RQBNpYJ3Yb",
+    "dateOfBirth": "1996-10-08",
+    "address": "Preobrazhens'ka St, 33, Odesa",
+    "active": true
+  }
+]

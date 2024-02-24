@@ -1,6 +1,7 @@
 package com.epam.gymapp.utils;
 
 import com.epam.gymapp.model.User;
+import java.util.List;
 import java.util.Random;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,14 +13,22 @@ public class UserUtils {
   private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   private static final int PASSWORD_LENGTH = 10;
 
-  public static int getAppearanceFromFoundUsername(String username) {
+  public static int getNumberOfAppearances(List<User> users) {
+    return users == null || users.isEmpty() ? 0 :
+        users.stream()
+            .mapToInt(user -> getAppearanceFromFoundUsername(user.getUsername()))
+            .max()
+            .orElse(0);
+  }
+
+  private static int getAppearanceFromFoundUsername(String username) {
     log.debug("Getting appearance from found username: {}", username);
 
     String numPart = username.replaceAll("\\D", "");
     return numPart.isEmpty() ? 1 : Integer.parseInt(numPart) + 1;
   }
 
-  public static String buildUsername(User user, long numOfAppearance) {
+  public static String buildUsername(User user, int numOfAppearance) {
     log.debug("Building username for the user: {}", user);
 
     return numOfAppearance == 0 ? String.format("%s.%s", user.getFirstName(), user.getLastName()) :

@@ -5,25 +5,68 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.epam.gymapp.model.User;
-import com.epam.gymapp.test.utils.TraineeTestUtil;
-import com.epam.gymapp.test.utils.TrainerTestUtil;
+import com.epam.gymapp.test.utils.UserTestUtil;
+import java.util.Collections;
+import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 public class UserUtilsTest {
 
-  @ParameterizedTest
-  @CsvSource({
-      "John.Doe, 1", "John.Smith1, 2",
-      "Peter.Parker4, 5", "Ben.Johnson10, 11"
-  })
-  void getAppearanceFromFoundUsername_Success(String username, int expectedResult) {
+  @Test
+  void getNumberOfAppearances_ListIsNotEmpty_Success() {
+    // Given
+    List<User> users = List.of(
+        User.builder().username("Will.Smith").build(),
+        User.builder().username("Will.Smith5").build(),
+        User.builder().username("Will.Smith3").build()
+    );
+    int expectedResult = 6;
+
     // When
-    int result = UserUtils.getAppearanceFromFoundUsername(username);
+    int result = UserUtils.getNumberOfAppearances(users);
+
+    // Then
+    assertEquals(expectedResult, result);
+  }
+
+  @Test
+  void getNumberOfAppearances_ListWithOneElement_Success() {
+    // Given
+    List<User> users = List.of(
+        User.builder().username("Will.Smith").build()
+    );
+    int expectedResult = 1;
+
+    // When
+    int result = UserUtils.getNumberOfAppearances(users);
+
+    // Then
+    assertEquals(expectedResult, result);
+  }
+
+  @Test
+  void getNumberOfAppearances_ListIsNull_Success() {
+    // Given
+    int expectedResult = 0;
+
+    // When
+    int result = UserUtils.getNumberOfAppearances(null);
+
+    // Then
+    assertEquals(expectedResult, result);
+  }
+
+  @Test
+  void getNumberOfAppearances_ListIsEmpty_Success() {
+    // Given
+    int expectedResult = 0;
+
+    // When
+    int result = UserUtils.getNumberOfAppearances(Collections.emptyList());
 
     // Then
     assertEquals(expectedResult, result);
@@ -31,7 +74,7 @@ public class UserUtilsTest {
 
   @ParameterizedTest
   @MethodSource("argumentsForBuildUsername")
-  void buildUsername_Success(User user, long numOfAppearance, String expectedResult) {
+  void buildUsername_Success(User user, int numOfAppearance, String expectedResult) {
     // When
     String result = UserUtils.buildUsername(user, numOfAppearance);
 
@@ -74,14 +117,14 @@ public class UserUtilsTest {
   }
 
   static Stream<Arguments> argumentsForBuildUsername() {
-    User user1 = TraineeTestUtil.getTrainee1();
-    User user2 = TrainerTestUtil.getTrainer2();
-    User user3 = TraineeTestUtil.getTrainee2();
+    User user1 = UserTestUtil.getTraineeUser1();
+    User user2 = UserTestUtil.getTraineeUser2();
+    User user3 = UserTestUtil.getTraineeUser3();
 
     return Stream.of(
         Arguments.of(user1, 0, "Michael.Patel"),
-        Arguments.of(user2, 3, "John.Doe3"),
-        Arguments.of(user3, 4, "Michael.Patel4")
+        Arguments.of(user2, 3, "Michael.Patel3"),
+        Arguments.of(user3, 4, "Christopher.Lee4")
     );
   }
 }

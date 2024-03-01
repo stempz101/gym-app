@@ -1,6 +1,5 @@
 package com.epam.gymapp.validator;
 
-import com.epam.gymapp.model.TrainingType;
 import java.util.function.Supplier;
 
 public interface GeneralValidator {
@@ -21,11 +20,10 @@ public interface GeneralValidator {
     }
   }
 
-  default <X extends RuntimeException> void validateTrainingType(
-      TrainingType trainingType, Supplier<X> exceptionSupplier
+  default <X extends RuntimeException> void validateCharArray(
+      char[] array, Supplier<X> exceptionSupplier
   ) {
-    if (trainingType == null || trainingType.getName() == null
-        || trainingType.getName().isBlank()) {
+    if (array == null || array.length == 0) {
       throw exceptionSupplier.get();
     }
   }

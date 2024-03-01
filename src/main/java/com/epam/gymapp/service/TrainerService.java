@@ -1,83 +1,114 @@
 package com.epam.gymapp.service;
 
-import com.epam.gymapp.dao.TrainerDAO;
 import com.epam.gymapp.dto.TrainerCreateDto;
-import com.epam.gymapp.exception.TrainerExistsWithUsernameException;
+import com.epam.gymapp.dto.TrainerInfoDto;
+import com.epam.gymapp.dto.TrainerShortInfoDto;
+import com.epam.gymapp.dto.TrainerUpdateDto;
+import com.epam.gymapp.dto.TrainingInfoDto;
+import com.epam.gymapp.dto.UserCredentialsDto;
 import com.epam.gymapp.exception.TrainerNotFoundException;
 import com.epam.gymapp.mapper.TrainerMapper;
+import com.epam.gymapp.mapper.TrainingMapper;
 import com.epam.gymapp.model.Trainer;
+import com.epam.gymapp.model.User;
+import com.epam.gymapp.repository.TrainerRepository;
+import com.epam.gymapp.repository.TrainingRepository;
+import com.epam.gymapp.repository.UserRepository;
 import com.epam.gymapp.utils.UserUtils;
-import com.epam.gymapp.validator.TrainerCreateDtoValidator;
+import com.epam.gymapp.validator.TrainerValidator;
+import java.time.LocalDate;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class TrainerService {
 
   private static final Logger log = LoggerFactory.getLogger(TrainerService.class);
 
-  @Autowired
-  private TrainerDAO trainerDAO;
+  private final TrainerRepository trainerRepository;
+  private final UserRepository userRepository;
+  private final TrainingRepository trainingRepository;
 
-  private TrainerCreateDtoValidator trainerCreateDtoValidator;
-  private TrainerMapper trainerMapper;
+  private final TrainerValidator trainerValidator;
 
-  public Trainer create(TrainerCreateDto trainerCreateDto) {
+  private final TrainerMapper trainerMapper;
+  private final TrainingMapper trainingMapper;
+
+  public UserCredentialsDto createTrainer(TrainerCreateDto trainerCreateDto) {
     log.info("Creating Trainer: {}", trainerCreateDto);
 
-    trainerCreateDtoValidator.validate(trainerCreateDto);
+    trainerValidator.validate(trainerCreateDto);
 
     Trainer trainer = trainerMapper.toTrainer(trainerCreateDto);
+    User trainerUser = trainer.getUser();
 
-    int numOfAppearances = trainerDAO.getLastCountedAppearances(
-        trainerCreateDto.getFirstName(), trainerCreateDto.getLastName());
-    trainer.setUsername(UserUtils.buildUsername(trainer, numOfAppearances));
-    trainer.setPassword(UserUtils.generatePassword());
+    List<User> users = userRepository.findAllByFirstAndLastNames(
+        trainerUser.getFirstName(), trainerUser.getLastName());
+    int numOfAppearances = UserUtils.getNumberOfAppearances(users);
 
-    return trainerDAO.save(trainer);
+    trainerUser.setUsername(UserUtils.buildUsername(trainerUser, numOfAppearances));
+    trainerUser.setPassword(UserUtils.generatePassword());
+
+    trainer = trainerRepository.save(trainer);
+
+    return trainerMapper.toUserCredentialsDto(trainer);
   }
 
-  public List<Trainer> selectTrainers() {
+  public List<TrainerInfoDto> selectTrainers() {
     log.info("Selecting all Trainers");
 
-    return trainerDAO.findAll();
+    return trainerRepository.findAll().stream()
+        .map(trainerMapper::toTrainerInfoDto)
+        .toList();
   }
 
-  public Trainer selectTrainer(Long id) {
-    log.info("Selecting Trainer by ID: {}", id);
+  public TrainerInfoDto selectTrainer(String username) {
+    log.info("Selecting Trainer by username: {}", username);
 
-    return trainerDAO.findById(id).orElseThrow(() -> new TrainerNotFoundException(id));
+    Trainer trainer = trainerRepository.findByUsername(username)
+        .orElseThrow(() -> new TrainerNotFoundException(username));
+
+    return trainerMapper.toTrainerInfoDto(trainer);
   }
 
-  public Trainer update(Trainer trainer) {
-    log.info("Updating Trainer: {}", trainer);
+  public TrainerInfoDto updateTrainer(TrainerUpdateDto trainerUpdateDto) {
+    log.info("Updating Trainer: {}", trainerUpdateDto);
 
-    if (trainer == null) {
-      throw new IllegalArgumentException("Trainer must not be null");
-    } else if (!trainerDAO.existsById(trainer.getUserId())) {
-      throw new TrainerNotFoundException(trainer.getUserId());
-    } else if (stringIsNotEmpty(trainer.getUsername())
-        && trainerDAO.existsByUsername(trainer.getUsername())) {
-      throw new TrainerExistsWithUsernameException(trainer.getUsername());
-    }
+    trainerValidator.validate(trainerUpdateDto);
 
-    return trainerDAO.save(trainer);
+    Trainer trainer = trainerRepository.findByUsername(trainerUpdateDto.getUsername())
+        .orElseThrow(() -> new TrainerNotFoundException(trainerUpdateDto.getUsername()));
+
+    trainerMapper.updateTrainer(trainerUpdateDto, trainer);
+    trainer = trainerRepository.update(trainer);
+
+    return trainerMapper.toTrainerInfoDto(trainer);
   }
 
-  private boolean stringIsNotEmpty(String str) {
-    return str != null && !str.isBlank();
+  public List<TrainingInfoDto> findTrainerTrainings(String username, LocalDate fromDate,
+      LocalDate toDate, String traineeName) {
+    log.info("""
+        Getting Trainer's (username={}) Trainings by next params:
+        - fromDate={}
+        - toDate={}
+        - traineeName={}""", username, fromDate, toDate, traineeName);
+
+    return trainingRepository.findAllByTrainerUsernameAndParams(username, fromDate, toDate, traineeName)
+        .stream()
+        .map(trainingMapper::toTrainingInfoDto)
+        .toList();
   }
 
-  @Autowired
-  public void setTrainerCreateDtoValidator(TrainerCreateDtoValidator trainerCreateDtoValidator) {
-    this.trainerCreateDtoValidator = trainerCreateDtoValidator;
-  }
+  public List<TrainerShortInfoDto> findUnassignedTrainers(String traineeUsername) {
+    log.info("Getting unassigned active Trainers on Trainee with username: {}", traineeUsername);
 
-  @Autowired
-  public void setTrainerMapper(TrainerMapper trainerMapper) {
-    this.trainerMapper = trainerMapper;
+    return trainerRepository.findAllUnassignedByTraineeUsername(traineeUsername)
+        .stream()
+        .map(trainerMapper::toTrainerShortInfoDto)
+        .toList();
   }
 }

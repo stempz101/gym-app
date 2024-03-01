@@ -1,60 +1,86 @@
 package com.epam.gymapp.model;
 
-import com.epam.gymapp.model.builder.TraineeBuilder;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Objects;
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@Data
+@Entity
+@Table(name = "trainee")
+@Builder
+@Getter
+@Setter
 @NoArgsConstructor
-public class Trainee extends User {
+@AllArgsConstructor
+public class Trainee {
 
-  private Long userId;
+  @Id
+  @GeneratedValue(strategy = GenerationType.AUTO)
+  private Long id;
+
+  @Column(name = "date_of_birth")
   private LocalDate dateOfBirth;
+
+  @Column(name = "address")
   private String address;
 
-  public Trainee(String firstName, String lastName, String username, char[] password,
-      boolean isActive, Long userId, LocalDate dateOfBirth, String address) {
-    super(firstName, lastName, username, password, isActive);
-    this.userId = userId;
-    this.dateOfBirth = dateOfBirth;
-    this.address = address;
-  }
+  @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+  @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
+  private User user;
 
-  public static TraineeBuilder builder() {
-    return new TraineeBuilder();
-  }
+  @ManyToMany(cascade = {
+      CascadeType.DETACH, CascadeType.MERGE,
+      CascadeType.PERSIST, CascadeType.REFRESH
+  })
+  @JoinTable(
+      name = "trainee_trainer",
+      joinColumns = @JoinColumn(name = "trainee_id"),
+      inverseJoinColumns = @JoinColumn(name = "trainer_id")
+  )
+  private List<Trainer> trainers;
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) {
+  public boolean equals(Object object) {
+    if (this == object) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (object == null || getClass() != object.getClass()) {
       return false;
     }
-    if (!super.equals(o)) {
-      return false;
-    }
-    Trainee trainee = (Trainee) o;
-    return Objects.equals(userId, trainee.userId) && Objects.equals(dateOfBirth,
-        trainee.dateOfBirth) && Objects.equals(address, trainee.address);
+    Trainee trainee = (Trainee) object;
+    return Objects.equals(id, trainee.id) && Objects.equals(dateOfBirth,
+        trainee.dateOfBirth) && Objects.equals(address, trainee.address)
+        && Objects.equals(user, trainee.user);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), userId, dateOfBirth, address);
+    return Objects.hash(id, dateOfBirth, address, user);
   }
 
   @Override
   public String toString() {
     return "Trainee(" +
-        "userId=" + userId +
-        ", firstName=" + firstName +
-        ", lastName=" + lastName +
+        "id=" + id +
         ", dateOfBirth=" + dateOfBirth +
         ", address=" + address +
+        ", user=" + user +
         ')';
   }
 }

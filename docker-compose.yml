@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+
+  postgres:
+    container_name: postgres
+    image: postgres:latest
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: gym_db
+    volumes:
+      - gym-volume:/var/lib/postgresql/data
+
+volumes:
+  gym-volume:

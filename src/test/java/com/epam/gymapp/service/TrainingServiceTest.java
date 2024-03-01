@@ -6,27 +6,28 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.samePropertyValuesAs;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.epam.gymapp.dao.TraineeDAO;
-import com.epam.gymapp.dao.TrainerDAO;
-import com.epam.gymapp.dao.TrainingDAO;
 import com.epam.gymapp.dto.TrainingCreateDto;
+import com.epam.gymapp.dto.TrainingInfoDto;
 import com.epam.gymapp.exception.TraineeNotFoundException;
 import com.epam.gymapp.exception.TrainerNotFoundException;
-import com.epam.gymapp.exception.TrainingNotFoundException;
 import com.epam.gymapp.exception.TrainingValidationException;
 import com.epam.gymapp.mapper.TrainingMapper;
+import com.epam.gymapp.model.Trainee;
+import com.epam.gymapp.model.Trainer;
 import com.epam.gymapp.model.Training;
-import com.epam.gymapp.model.TrainingType;
+import com.epam.gymapp.repository.TraineeRepository;
+import com.epam.gymapp.repository.TrainerRepository;
+import com.epam.gymapp.repository.TrainingRepository;
+import com.epam.gymapp.test.utils.TraineeTestUtil;
+import com.epam.gymapp.test.utils.TrainerTestUtil;
 import com.epam.gymapp.test.utils.TrainingTestUtil;
-import com.epam.gymapp.validator.TrainingCreateDtoValidator;
+import com.epam.gymapp.validator.TrainingValidator;
 import java.util.List;
 import java.util.Optional;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -41,238 +42,227 @@ public class TrainingServiceTest {
   private TrainingService trainingService;
 
   @Mock
-  private TrainingDAO trainingDAO;
+  private TrainingRepository trainingRepository;
 
   @Mock
-  private TraineeDAO traineeDAO;
+  private TraineeRepository traineeRepository;
 
   @Mock
-  private TrainerDAO trainerDAO;
+  private TrainerRepository trainerRepository;
 
   @Spy
-  private TrainingCreateDtoValidator trainingCreateDtoValidator;
+  private TrainingValidator trainingValidator;
 
   @Mock
   private TrainingMapper trainingMapper;
 
-  @BeforeEach
-  void setUp() {
-    trainingService.setTrainingCreateDtoValidator(trainingCreateDtoValidator);
-    trainingService.setTrainingMapper(trainingMapper);
-  }
 
   @Test
-  void create_Success() {
+  void createTraining_Success() {
     // Given
     TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
     Training mappedTraining = TrainingTestUtil.getTraining1FromTrainingCreateDto();
-    Training expectedResult = TrainingTestUtil.getTraining1();
+    Training createdTraining = TrainingTestUtil.getTraining1();
+    Trainee trainee = TraineeTestUtil.getTrainee1();
+    Trainer trainer = TrainerTestUtil.getTrainer2();
+    TrainingInfoDto expectedResult = TrainingTestUtil.getTrainingInfoDto1();
 
     // When
-    when(traineeDAO.existsById(anyLong())).thenReturn(true);
-    when(trainerDAO.existsById(anyLong())).thenReturn(true);
+    when(traineeRepository.findByUsername(any())).thenReturn(Optional.of(trainee));
+    when(trainerRepository.findByUsername(any())).thenReturn(Optional.of(trainer));
     when(trainingMapper.toTraining(any())).thenReturn(mappedTraining);
-    when(trainingDAO.save(any())).thenReturn(expectedResult);
+    when(trainingRepository.save(any())).thenReturn(createdTraining);
+    when(trainingMapper.toTrainingInfoDto(any())).thenReturn(expectedResult);
 
-    Training result = trainingService.create(trainingCreateDto);
+    TrainingInfoDto result = trainingService.createTraining(trainingCreateDto);
 
     // Then
-    verify(trainingCreateDtoValidator, times(1)).validate(any());
-    verify(traineeDAO, times(1)).existsById(anyLong());
-    verify(trainerDAO, times(1)).existsById(anyLong());
+    verify(trainingValidator, times(1)).validate(any());
+    verify(traineeRepository, times(1)).findByUsername(any());
+    verify(trainerRepository, times(1)).findByUsername(any());
     verify(trainingMapper, times(1)).toTraining(any());
-    verify(trainingDAO, times(1)).save(any());
+    verify(trainingRepository, times(1)).save(any());
+    verify(trainingMapper, times(1)).toTrainingInfoDto(any());
 
     assertThat(result, samePropertyValuesAs(expectedResult));
   }
 
   @Test
-  void create_TrainingCreateDtoIsNull_Failure() {
+  void createTraining_TrainingCreateDtoIsNull_Failure() {
     // When & Then
-    assertThrows(IllegalArgumentException.class, () -> trainingService.create(null));
+    assertThrows(IllegalArgumentException.class, () -> trainingService.createTraining(null));
   }
 
   @Test
-  void create_TraineeIdIsNull_Failure() {
+  void createTraining_TraineeUsernameIsNull_Failure() {
     // Given
     TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
-    trainingCreateDto.setTraineeId(null);
+    trainingCreateDto.setTraineeUsername(null);
 
     // When & Then
-    assertThrows(TrainingValidationException.class, () -> trainingService.create(trainingCreateDto));
+    assertThrows(TrainingValidationException.class,
+        () -> trainingService.createTraining(trainingCreateDto));
   }
 
   @Test
-  void create_TrainerIdIsNull_Failure() {
+  void createTraining_TraineeUsernameIsEmpty_Failure() {
     // Given
     TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
-    trainingCreateDto.setTrainerId(null);
+    trainingCreateDto.setTraineeUsername("");
 
     // When & Then
-    assertThrows(TrainingValidationException.class, () -> trainingService.create(trainingCreateDto));
+    assertThrows(TrainingValidationException.class,
+        () -> trainingService.createTraining(trainingCreateDto));
   }
 
   @Test
-  void create_NameIsNull_Failure() {
+  void createTraining_TraineeUsernameIsBlank_Failure() {
+    // Given
+    TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
+    trainingCreateDto.setTraineeUsername("    ");
+
+    // When & Then
+    assertThrows(TrainingValidationException.class,
+        () -> trainingService.createTraining(trainingCreateDto));
+  }
+
+  @Test
+  void createTraining_TrainerUsernameIsNull_Failure() {
+    // Given
+    TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
+    trainingCreateDto.setTrainerUsername(null);
+
+    // When & Then
+    assertThrows(TrainingValidationException.class,
+        () -> trainingService.createTraining(trainingCreateDto));
+  }
+
+  @Test
+  void createTraining_TrainerUsernameIsEmpty_Failure() {
+    // Given
+    TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
+    trainingCreateDto.setTrainerUsername("");
+
+    // When & Then
+    assertThrows(TrainingValidationException.class,
+        () -> trainingService.createTraining(trainingCreateDto));
+  }
+
+  @Test
+  void createTraining_TrainerUsernameIsBlank_Failure() {
+    // Given
+    TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
+    trainingCreateDto.setTrainerUsername("    ");
+
+    // When & Then
+    assertThrows(TrainingValidationException.class,
+        () -> trainingService.createTraining(trainingCreateDto));
+  }
+
+  @Test
+  void createTraining_NameIsNull_Failure() {
     // Given
     TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
     trainingCreateDto.setName(null);
 
     // When & Then
-    assertThrows(TrainingValidationException.class, () -> trainingService.create(trainingCreateDto));
+    assertThrows(TrainingValidationException.class,
+        () -> trainingService.createTraining(trainingCreateDto));
   }
 
   @Test
-  void create_NameIsEmpty_Failure() {
+  void createTraining_NameIsEmpty_Failure() {
     // Given
     TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
     trainingCreateDto.setName("");
 
     // When & Then
-    assertThrows(TrainingValidationException.class, () -> trainingService.create(trainingCreateDto));
+    assertThrows(TrainingValidationException.class,
+        () -> trainingService.createTraining(trainingCreateDto));
   }
 
   @Test
-  void create_NameIsBlank_Failure() {
+  void createTraining_NameIsBlank_Failure() {
     // Given
     TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
     trainingCreateDto.setName("    ");
 
     // When & Then
-    assertThrows(TrainingValidationException.class, () -> trainingService.create(trainingCreateDto));
+    assertThrows(TrainingValidationException.class,
+        () -> trainingService.createTraining(trainingCreateDto));
   }
 
   @Test
-  void create_TypeIsNull_Failure() {
-    // Given
-    TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
-    trainingCreateDto.setType(null);
-
-    // When & Then
-    assertThrows(TrainingValidationException.class, () -> trainingService.create(trainingCreateDto));
-  }
-
-  @Test
-  void create_TypeNameIsNull_Failure() {
-    // Given
-    TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
-    trainingCreateDto.setType(new TrainingType(null));
-
-    // When & Then
-    assertThrows(TrainingValidationException.class, () -> trainingService.create(trainingCreateDto));
-  }
-
-  @Test
-  void create_TypeNameIsEmpty_Failure() {
-    // Given
-    TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
-    trainingCreateDto.setType(new TrainingType(""));
-
-    // When & Then
-    assertThrows(TrainingValidationException.class, () -> trainingService.create(trainingCreateDto));
-  }
-
-  @Test
-  void create_TypeNameIsBlank_Failure() {
-    // Given
-    TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
-    trainingCreateDto.setType(new TrainingType("    "));
-
-    // When & Then
-    assertThrows(TrainingValidationException.class, () -> trainingService.create(trainingCreateDto));
-  }
-
-  @Test
-  void create_DateIsNull_Failure() {
+  void createTraining_DateIsNull_Failure() {
     // Given
     TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
     trainingCreateDto.setDate(null);
 
     // When & Then
-    assertThrows(TrainingValidationException.class, () -> trainingService.create(trainingCreateDto));
+    assertThrows(TrainingValidationException.class,
+        () -> trainingService.createTraining(trainingCreateDto));
   }
 
   @Test
-  void create_DurationIsNull_Failure() {
+  void createTraining_DurationIsNull_Failure() {
     // Given
     TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
     trainingCreateDto.setDuration(null);
 
     // When & Then
-    assertThrows(TrainingValidationException.class, () -> trainingService.create(trainingCreateDto));
+    assertThrows(TrainingValidationException.class,
+        () -> trainingService.createTraining(trainingCreateDto));
   }
 
   @Test
-  void create_TraineeNotFound_Failure() {
+  void createTraining_TraineeNotFound_Failure() {
     // Given
     TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
 
     // When
-    when(traineeDAO.existsById(anyLong())).thenReturn(false);
+    when(traineeRepository.findByUsername(any())).thenReturn(Optional.empty());
 
     // Then
-    assertThrows(TraineeNotFoundException.class, () -> trainingService.create(trainingCreateDto));
+    assertThrows(TraineeNotFoundException.class,
+        () -> trainingService.createTraining(trainingCreateDto));
   }
 
   @Test
-  void create_TrainerNotFound_Failure() {
+  void createTraining_TrainerNotFound_Failure() {
     // Given
     TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
+    Trainee trainee = TraineeTestUtil.getTrainee1();
 
     // When
-    when(traineeDAO.existsById(anyLong())).thenReturn(true);
-    when(trainerDAO.existsById(anyLong())).thenReturn(false);
+    when(traineeRepository.findByUsername(any())).thenReturn(Optional.of(trainee));
+    when(trainerRepository.findByUsername(any())).thenReturn(Optional.empty());
 
     // Then
-    assertThrows(TrainerNotFoundException.class, () -> trainingService.create(trainingCreateDto));
+    assertThrows(TrainerNotFoundException.class,
+        () -> trainingService.createTraining(trainingCreateDto));
   }
 
   @Test
   void selectTrainings_Success() {
     // Given
-    List<Training> expectedResult = TrainingTestUtil.getTrainings();
+    List<Training> trainings = TrainingTestUtil.getTrainings();
+    List<TrainingInfoDto> expectedResult = TrainingTestUtil.getTrainingInfoDtos();
 
     // When
-    when(trainingDAO.findAll()).thenReturn(expectedResult);
+    when(trainingRepository.findAll()).thenReturn(trainings);
+    when(trainingMapper.toTrainingInfoDto(any())).thenReturn(expectedResult.get(0),
+        expectedResult.get(1));
 
-    List<Training> result = trainingService.selectTrainings();
+    List<TrainingInfoDto> result = trainingService.selectTrainings();
 
     // Then
-    verify(trainingDAO, times(1)).findAll();
+    verify(trainingRepository, times(1)).findAll();
+    verify(trainingMapper, times(2)).toTrainingInfoDto(any());
 
     assertThat(result, hasSize(expectedResult.size()));
     assertThat(result, hasItems(
-        TrainingTestUtil.getTraining1(),
-        TrainingTestUtil.getTraining2(),
-        TrainingTestUtil.getTraining3()
+        TrainingTestUtil.getTrainingInfoDto1(),
+        TrainingTestUtil.getTrainingInfoDto2()
     ));
-  }
-
-  @Test
-  void selectTraining_Success() {
-    // Given
-    Training expectedResult = TrainingTestUtil.getTraining1();
-
-    // When
-    when(trainingDAO.findById(anyLong())).thenReturn(Optional.of(expectedResult));
-
-    Training result = trainingService.selectTraining(expectedResult.getId());
-
-    // Then
-    verify(trainingDAO, times(1)).findById(anyLong());
-
-    assertThat(result, samePropertyValuesAs(expectedResult));
-  }
-
-  @Test
-  void selectTraining_TrainingNotFound_Failure() {
-    // Given
-    Training training = TrainingTestUtil.getTraining1();
-
-    // When
-    when(trainingDAO.findById(anyLong())).thenReturn(Optional.empty());
-
-    // Then
-    assertThrows(TrainingNotFoundException.class, () -> trainingService.selectTraining(training.getId()));
   }
 }

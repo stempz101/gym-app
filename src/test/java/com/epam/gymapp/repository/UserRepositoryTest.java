@@ -8,12 +8,13 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.epam.gymapp.config.TestHibernateConfiguration;
 import com.epam.gymapp.model.User;
 import com.epam.gymapp.test.utils.UserTestUtil;
+import jakarta.persistence.PersistenceException;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
@@ -63,17 +64,13 @@ public class UserRepositoryTest {
 
   @Test
   @Order(2)
-  void save_IfExceptionReturnNull_Success() {
+  void save_IfException_Failure() {
     // Given
     User user = UserTestUtil.getNewTraineeUser1();
     user.setFirstName(null);
 
-    // When
-    User result = userRepository.save(user);
-    log.debug("save_IfExceptionReturnNull_Success: result {}", result);
-
-    // Then
-    assertNull(result);
+    // When & Then
+    assertThrows(PersistenceException.class, () -> userRepository.save(user));
   }
 
   @Test
@@ -191,17 +188,13 @@ public class UserRepositoryTest {
 
   @Test
   @Order(10)
-  void update_IfExceptionReturnNull_Success() {
+  void update_IfException_Failure() {
     // Given
     User user = UserTestUtil.getNewTrainerUser2();
     user.setFirstName(null);
 
-    // When
-    User result = userRepository.update(user);
-    log.debug("update_IfExceptionReturnNull_Success: result {}", result);
-
-    // Then
-    assertNull(result);
+    // When & Then
+    assertThrows(PersistenceException.class, () -> userRepository.update(user));
   }
 
   @Order(11)
@@ -216,12 +209,12 @@ public class UserRepositoryTest {
 
   @Order(12)
   @Test
-  void delete_IfException_Success() {
+  void delete_IfException_Failure() {
     // Given
     User user = UserTestUtil.getUser9();
     user.setId(-1L);
 
-    // When
-    userRepository.delete(user);
+    // When & Then
+    assertThrows(PersistenceException.class, () -> userRepository.delete(user));
   }
 }

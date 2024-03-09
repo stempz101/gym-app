@@ -1,9 +1,11 @@
 package com.epam.gymapp.test.utils;
 
 import com.epam.gymapp.dto.ChangePasswordDto;
+import com.epam.gymapp.dto.JwtDto;
 import com.epam.gymapp.dto.UserActivateDto;
 import com.epam.gymapp.dto.UserCredentialsDto;
 import com.epam.gymapp.model.User;
+import java.util.HashMap;
 
 public class UserTestUtil {
 
@@ -210,6 +212,14 @@ public class UserTestUtil {
         .password(TEST_USER_PASSWORD_9)
         .isActive(TEST_USER_IS_ACTIVE_9)
         .build();
+  }
+
+  public static String getUserToken() {
+    return JwtUtil.generateToken(new HashMap<>(), getTraineeUser1());
+  }
+
+  public static JwtDto getUserJwtDto(String token) {
+    return new JwtDto(token);
   }
 
   public static UserCredentialsDto getTraineeUserCredentialsDto1() {

@@ -176,6 +176,7 @@ public class TrainingTestUtil {
         .duration(TEST_TRAINING_DURATION_1)
         .traineeName(traineeName)
         .trainerName(trainerName)
+        .type(TrainingTypeTestUtil.TEST_TRAINING_TYPE_NAME_2)
         .build();
   }
 
@@ -191,6 +192,7 @@ public class TrainingTestUtil {
         .duration(TEST_TRAINING_DURATION_2)
         .traineeName(traineeName)
         .trainerName(trainerName)
+        .type(TrainingTypeTestUtil.TEST_TRAINING_TYPE_NAME_3)
         .build();
   }
 
@@ -206,6 +208,7 @@ public class TrainingTestUtil {
         .duration(TEST_TRAINING_DURATION_5)
         .traineeName(traineeName)
         .trainerName(trainerName)
+        .type(TrainingTypeTestUtil.TEST_TRAINING_TYPE_NAME_1)
         .build();
   }
 
@@ -221,6 +224,7 @@ public class TrainingTestUtil {
         .duration(TEST_TRAINING_DURATION_6)
         .traineeName(traineeName)
         .trainerName(trainerName)
+        .type(TrainingTypeTestUtil.TEST_TRAINING_TYPE_NAME_2)
         .build();
   }
 

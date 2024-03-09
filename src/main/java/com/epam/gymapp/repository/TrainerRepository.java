@@ -4,64 +4,47 @@ import com.epam.gymapp.model.Trainer;
 import com.epam.gymapp.model.TrainingType;
 import java.util.List;
 import java.util.Optional;
-import lombok.RequiredArgsConstructor;
-import org.hibernate.Session;
 import org.hibernate.SessionFactory;
-import org.hibernate.Transaction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
 @Repository
-@RequiredArgsConstructor
-public class TrainerRepository implements GeneralRepository<Long, Trainer> {
+public class TrainerRepository extends AbstractHibernateRepository
+    implements GeneralRepository<Long, Trainer> {
 
-  private static final Logger log = LoggerFactory.getLogger(TrainerRepository.class);
-
-  private final SessionFactory sessionFactory;
+  public TrainerRepository(SessionFactory sessionFactory) {
+    super(sessionFactory);
+  }
 
   @Override
   public Trainer save(Trainer trainer) {
-    try (Session session = sessionFactory.openSession()) {
-      Transaction transaction = session.beginTransaction();
-      Trainer savedTrainer = null;
+    return executeTransactionalOperation(session -> {
+      session.createQuery("from TrainingType tt where tt.name = :name", TrainingType.class)
+          .setParameter("name", trainer.getSpecialization().getName())
+          .uniqueResultOptional()
+          .ifPresent(trainer::setSpecialization);
 
-      try {
-        session.createQuery("from TrainingType tt where tt.name = :name", TrainingType.class)
-            .setParameter("name", trainer.getSpecialization().getName())
-            .uniqueResultOptional()
-            .ifPresent(trainer::setSpecialization);
-
-        session.persist(trainer);
-        savedTrainer = trainer;
-        transaction.commit();
-      } catch (Exception ex) {
-        log.error("save: exception {}", ex.getMessage(), ex);
-        transaction.rollback();
-      }
-
-      return savedTrainer;
-    }
+      session.persist(trainer);
+      return trainer;
+    });
   }
 
   @Override
   public List<Trainer> findAll() {
-    try (Session session = sessionFactory.openSession()) {
-      return session.createQuery("""
+    return executeOperation(session -> session
+        .createQuery("""
               from Trainer t
               join fetch t.user
               join fetch t.specialization
               left join fetch t.trainees tr
               left join fetch tr.user
               """, Trainer.class)
-          .setReadOnly(true)
-          .list();
-    }
+        .setReadOnly(true)
+        .list());
   }
 
   public List<Trainer> findAllUnassignedByTraineeUsername(String traineeUsername) {
-    try (Session session = sessionFactory.openSession()) {
-      return session.createQuery("""
+    return executeOperation(session -> session
+        .createQuery("""
               from Trainer tr1
               join fetch tr1.user
               join fetch tr1.specialization
@@ -74,31 +57,29 @@ public class TrainerRepository implements GeneralRepository<Long, Trainer> {
                 where ute.username = :traineeUsername
               )
               """, Trainer.class)
-          .setParameter("traineeUsername", traineeUsername)
-          .setReadOnly(true)
-          .list();
-    }
+        .setParameter("traineeUsername", traineeUsername)
+        .setReadOnly(true)
+        .list());
   }
 
   public List<Trainer> findAllByUsernameIn(List<String> usernames) {
-    try (Session session = sessionFactory.openSession()) {
-      return session.createQuery("""
+    return executeOperation(session -> session
+        .createQuery("""
               from Trainer t
               join fetch t.user u
               join fetch t.specialization
               left join fetch t.trainees
               where u.username in (:usernames)
               """, Trainer.class)
-          .setParameter("usernames", usernames)
-          .setReadOnly(true)
-          .list();
-    }
+        .setParameter("usernames", usernames)
+        .setReadOnly(true)
+        .list());
   }
 
   @Override
   public Optional<Trainer> findById(Long id) {
-    try (Session session = sessionFactory.openSession()) {
-      return session.createQuery("""
+    return executeOperation(session -> session
+        .createQuery("""
               from Trainer t
               join fetch t.user
               join fetch t.specialization
@@ -106,15 +87,14 @@ public class TrainerRepository implements GeneralRepository<Long, Trainer> {
               left join fetch tr.user
               where t.id = :id
               """, Trainer.class)
-          .setParameter("id", id)
-          .setReadOnly(true)
-          .uniqueResultOptional();
-    }
+        .setParameter("id", id)
+        .setReadOnly(true)
+        .uniqueResultOptional());
   }
 
   public Optional<Trainer> findByUsername(String username) {
-    try (Session session = sessionFactory.openSession()) {
-      return session.createQuery("""
+    return executeOperation(session -> session
+        .createQuery("""
               from Trainer t
               join fetch t.user
               join fetch t.specialization
@@ -122,21 +102,16 @@ public class TrainerRepository implements GeneralRepository<Long, Trainer> {
               left join fetch tr.user
               where t.user.username = :username
               """, Trainer.class)
-          .setParameter("username", username)
-          .setReadOnly(true)
-          .uniqueResultOptional();
-    }
+        .setParameter("username", username)
+        .setReadOnly(true)
+        .uniqueResultOptional());
   }
 
   @Override
   public Trainer update(Trainer trainer) {
-    try (Session session = sessionFactory.openSession()) {
-      Transaction transaction = session.beginTransaction();
-      Trainer updatedTrainer = null;
-
-      try {
-        updatedTrainer = session.merge(trainer);
-        updatedTrainer = session.createQuery("""
+    return executeTransactionalOperation(session -> {
+      Trainer updatedTrainer = session.merge(trainer);
+      return session.createQuery("""
                 from Trainer t
                 join fetch t.user
                 join fetch t.specialization
@@ -144,34 +119,20 @@ public class TrainerRepository implements GeneralRepository<Long, Trainer> {
                 left join fetch tr.user
                 where t.id = :id
                 """, Trainer.class)
-            .setParameter("id", updatedTrainer.getId())
-            .setReadOnly(true)
-            .uniqueResult();
-        transaction.commit();
-      } catch (Exception ex) {
-        log.error("update: exception {}", ex.getMessage(), ex);
-        transaction.rollback();
-      }
-
-      return updatedTrainer;
-    }
+          .setParameter("id", updatedTrainer.getId())
+          .setReadOnly(true)
+          .uniqueResult();
+    });
   }
 
   @Override
   public void delete(Trainer trainer) {
-    try (Session session = sessionFactory.openSession()) {
-      Transaction transaction = session.beginTransaction();
-
-      try {
-        session.createMutationQuery("delete from Training t where t.trainer.id = :trainerId")
-            .setParameter("trainerId", trainer.getId())
-            .executeUpdate();
-        session.remove(trainer);
-        transaction.commit();
-      } catch (Exception ex) {
-        log.error("delete: exception {}", ex.getMessage(), ex);
-        transaction.rollback();
-      }
-    }
+    executeTransactionalOperation(session -> {
+      session.createMutationQuery("delete from Training t where t.trainer.id = :trainerId")
+          .setParameter("trainerId", trainer.getId())
+          .executeUpdate();
+      session.remove(trainer);
+      return null;
+    });
   }
 }

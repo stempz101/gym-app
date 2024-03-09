@@ -35,8 +35,18 @@ public interface TrainerMapper {
   @Mapping(source = "user.firstName", target = "firstName")
   @Mapping(source = "user.lastName", target = "lastName")
   @Mapping(source = "specialization.name", target = "specialization")
+  @Mapping(source = "user.active", target = "isActive")
   @Mapping(source = "trainees", target = "trainees", qualifiedByName = "toTraineeShortInfoDto")
   TrainerInfoDto toTrainerInfoDto(Trainer trainer);
+
+  @BeanMapping(ignoreByDefault = true)
+  @Mapping(source = "user.username", target = "username")
+  @Mapping(source = "user.firstName", target = "firstName")
+  @Mapping(source = "user.lastName", target = "lastName")
+  @Mapping(source = "specialization.name", target = "specialization")
+  @Mapping(source = "user.active", target = "isActive")
+  @Mapping(source = "trainees", target = "trainees", qualifiedByName = "toTraineeShortInfoDto")
+  TrainerInfoDto toTrainerInfoDtoAfterUpdate(Trainer trainer);
 
   @BeanMapping(ignoreByDefault = true)
   @Mapping(source = "user.username", target = "username")
@@ -55,5 +65,6 @@ public interface TrainerMapper {
   @BeanMapping(ignoreByDefault = true)
   @Mapping(source = "firstName", target = "user.firstName")
   @Mapping(source = "lastName", target = "user.lastName")
+  @Mapping(source = "isActive", target = "user.active")
   void updateTrainer(TrainerUpdateDto trainerUpdateDto, @MappingTarget Trainer trainer);
 }

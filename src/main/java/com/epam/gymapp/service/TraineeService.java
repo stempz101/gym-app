@@ -21,7 +21,6 @@ import com.epam.gymapp.repository.TrainerRepository;
 import com.epam.gymapp.repository.TrainingRepository;
 import com.epam.gymapp.repository.UserRepository;
 import com.epam.gymapp.utils.UserUtils;
-import com.epam.gymapp.validator.TraineeValidator;
 import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -40,16 +39,12 @@ public class TraineeService {
   private final TrainingRepository trainingRepository;
   private final TrainerRepository trainerRepository;
 
-  private final TraineeValidator traineeValidator;
-
   private final TraineeMapper traineeMapper;
   private final TrainingMapper trainingMapper;
   private final TrainerMapper trainerMapper;
 
   public UserCredentialsDto createTrainee(TraineeCreateDto traineeCreateDto) {
     log.info("Creating Trainee: {}", traineeCreateDto);
-
-    traineeValidator.validate(traineeCreateDto);
 
     Trainee trainee = traineeMapper.toTrainee(traineeCreateDto);
     User traineeUser = trainee.getUser();
@@ -86,15 +81,13 @@ public class TraineeService {
   public TraineeInfoDto updateTrainee(TraineeUpdateDto traineeUpdateDto) {
     log.info("Updating Trainee: {}", traineeUpdateDto);
 
-    traineeValidator.validate(traineeUpdateDto);
-
     Trainee trainee = traineeRepository.findByUsername(traineeUpdateDto.getUsername())
         .orElseThrow(() -> new TraineeNotFoundException(traineeUpdateDto.getUsername()));
 
     traineeMapper.updateTrainee(traineeUpdateDto, trainee);
     trainee = traineeRepository.update(trainee);
 
-    return traineeMapper.toTraineeInfoDto(trainee);
+    return traineeMapper.toTraineeInfoDtoAfterUpdate(trainee);
   }
 
   public void deleteTrainee(String username) {

@@ -37,8 +37,19 @@ public interface TraineeMapper {
   @Mapping(source = "user.lastName", target = "lastName")
   @Mapping(source = "dateOfBirth", target = "dateOfBirth")
   @Mapping(source = "address", target = "address")
+  @Mapping(source = "user.active", target = "isActive")
   @Mapping(source = "trainers", target = "trainers", qualifiedByName = "toTrainerShortInfoDto")
   TraineeInfoDto toTraineeInfoDto(Trainee trainee);
+
+  @BeanMapping(ignoreByDefault = true)
+  @Mapping(source = "user.username", target = "username")
+  @Mapping(source = "user.firstName", target = "firstName")
+  @Mapping(source = "user.lastName", target = "lastName")
+  @Mapping(source = "dateOfBirth", target = "dateOfBirth")
+  @Mapping(source = "address", target = "address")
+  @Mapping(source = "user.active", target = "isActive")
+  @Mapping(source = "trainers", target = "trainers", qualifiedByName = "toTrainerShortInfoDto")
+  TraineeInfoDto toTraineeInfoDtoAfterUpdate(Trainee trainee);
 
   @BeanMapping(ignoreByDefault = true)
   @Mapping(source = "user.username", target = "username")
@@ -59,5 +70,6 @@ public interface TraineeMapper {
   @Mapping(source = "lastName", target = "user.lastName")
   @Mapping(source = "dateOfBirth", target = "dateOfBirth")
   @Mapping(source = "address", target = "address")
+  @Mapping(source = "isActive", target = "user.active")
   void updateTrainee(TraineeUpdateDto traineeUpdateDto, @MappingTarget Trainee trainee);
 }

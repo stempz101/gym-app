@@ -98,6 +98,7 @@ public class TrainerTestUtil {
         .firstName(UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_1)
         .lastName(UserTestUtil.TEST_TRAINER_USER_LAST_NAME_1)
         .specialization(TrainingTypeTestUtil.TEST_TRAINING_TYPE_NAME_1)
+        .isActive(false)
         .build();
   }
 
@@ -113,6 +114,19 @@ public class TrainerTestUtil {
 
   public static TrainerInfoDto getTrainerInfoDto1() {
     return TrainerInfoDto.builder()
+        .firstName(UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_1)
+        .lastName(UserTestUtil.TEST_TRAINER_USER_LAST_NAME_1)
+        .specialization(TrainingTypeTestUtil.TEST_TRAINING_TYPE_NAME_1)
+        .trainees(List.of(
+            TraineeTestUtil.getTraineeShortInfoDto3(),
+            TraineeTestUtil.getTraineeShortInfoDto2()
+        ))
+        .build();
+  }
+
+  public static TrainerInfoDto getTrainerInfoDto1AfterUpdate() {
+    return TrainerInfoDto.builder()
+        .username(UserTestUtil.TEST_TRAINER_USER_USERNAME_1)
         .firstName(UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_1)
         .lastName(UserTestUtil.TEST_TRAINER_USER_LAST_NAME_1)
         .specialization(TrainingTypeTestUtil.TEST_TRAINING_TYPE_NAME_1)

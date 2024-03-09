@@ -115,6 +115,7 @@ public class TraineeTestUtil {
         .lastName(UserTestUtil.TEST_TRAINEE_USER_LAST_NAME_1)
         .dateOfBirth(TEST_TRAINEE_DATE_OF_BIRTH_1)
         .address(TEST_TRAINEE_ADDRESS_1)
+        .isActive(false)
         .build();
   }
 
@@ -131,6 +132,19 @@ public class TraineeTestUtil {
 
   public static TraineeInfoDto getTraineeInfoDto1() {
     return TraineeInfoDto.builder()
+        .firstName(UserTestUtil.TEST_TRAINEE_USER_FIRST_NAME_1)
+        .lastName(UserTestUtil.TEST_TRAINEE_USER_LAST_NAME_1)
+        .dateOfBirth(TEST_TRAINEE_DATE_OF_BIRTH_1)
+        .address(TEST_TRAINEE_ADDRESS_1)
+        .trainers(List.of(
+            TrainerTestUtil.getTrainerShortInfoDto2()
+        ))
+        .build();
+  }
+
+  public static TraineeInfoDto getTraineeInfoDto1AfterUpdate() {
+    return TraineeInfoDto.builder()
+        .username(UserTestUtil.TEST_TRAINEE_USER_USERNAME_1)
         .firstName(UserTestUtil.TEST_TRAINEE_USER_FIRST_NAME_1)
         .lastName(UserTestUtil.TEST_TRAINEE_USER_LAST_NAME_1)
         .dateOfBirth(TEST_TRAINEE_DATE_OF_BIRTH_1)

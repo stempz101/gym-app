@@ -12,50 +12,34 @@ import jakarta.persistence.criteria.Root;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import lombok.RequiredArgsConstructor;
-import org.hibernate.Session;
 import org.hibernate.SessionFactory;
-import org.hibernate.Transaction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
 @Repository
-@RequiredArgsConstructor
-public class TrainingRepository implements GeneralRepository<Long, Training> {
+public class TrainingRepository extends AbstractHibernateRepository
+    implements GeneralRepository<Long, Training> {
 
-  private static final Logger log = LoggerFactory.getLogger(TrainingRepository.class);
-
-  private final SessionFactory sessionFactory;
+  public TrainingRepository(SessionFactory sessionFactory) {
+    super(sessionFactory);
+  }
 
   @Override
   public Training save(Training training) {
-    try (Session session = sessionFactory.openSession()) {
-      Transaction transaction = session.beginTransaction();
-      Training savedTraining = null;
+    return executeTransactionalOperation(session -> {
+      Trainee trainee = session.merge(training.getTrainee());
+      Trainer trainer = session.merge(training.getTrainer());
+      training.setTrainee(trainee);
+      training.setTrainer(trainer);
 
-      try {
-        Trainee trainee = session.merge(training.getTrainee());
-        Trainer trainer = session.merge(training.getTrainer());
-        training.setTrainee(trainee);
-        training.setTrainer(trainer);
-
-        session.persist(training);
-        savedTraining = training;
-        transaction.commit();
-      } catch (Exception ex) {
-        log.error("save: exception {}", ex.getMessage(), ex);
-        transaction.rollback();
-      }
-
-      return savedTraining;
-    }
+      session.persist(training);
+      return training;
+    });
   }
 
   @Override
   public List<Training> findAll() {
-    try (Session session = sessionFactory.openSession()) {
-      return session.createQuery("""
+    return executeOperation(session -> session
+        .createQuery("""
               from Training t
               join fetch t.trainee trainee
               join fetch trainee.user
@@ -63,14 +47,13 @@ public class TrainingRepository implements GeneralRepository<Long, Training> {
               join fetch trainer.user
               join fetch t.type
               """, Training.class)
-          .setReadOnly(true)
-          .list();
-    }
+        .setReadOnly(true)
+        .list());
   }
 
   public List<Training> findAllByTraineeUsernameAndParams(String username, LocalDate fromDate,
       LocalDate toDate, String trainerName, String trainingType) {
-    try (Session session = sessionFactory.openSession()) {
+    return executeOperation(session -> {
       session.setDefaultReadOnly(true);
 
       CriteriaBuilder builder = session.getCriteriaBuilder();
@@ -108,12 +91,12 @@ public class TrainingRepository implements GeneralRepository<Long, Training> {
       query.select(root).where(predicate);
 
       return session.createQuery(query).getResultList();
-    }
+    });
   }
 
   public List<Training> findAllByTrainerUsernameAndParams(String username, LocalDate fromDate,
       LocalDate toDate, String traineeName) {
-    try (Session session = sessionFactory.openSession()) {
+    return executeOperation(session -> {
       session.setDefaultReadOnly(true);
 
       CriteriaBuilder builder = session.getCriteriaBuilder();
@@ -147,13 +130,13 @@ public class TrainingRepository implements GeneralRepository<Long, Training> {
       query.select(root).where(predicate);
 
       return session.createQuery(query).getResultList();
-    }
+    });
   }
 
   @Override
   public Optional<Training> findById(Long id) {
-    try (Session session = sessionFactory.openSession()) {
-      return session.createQuery("""
+    return executeOperation(session -> session
+        .createQuery("""
               from Training t
               join fetch t.trainee trainee
               join fetch trainee.user
@@ -162,21 +145,16 @@ public class TrainingRepository implements GeneralRepository<Long, Training> {
               join fetch t.type
               where t.id=:id
               """, Training.class)
-          .setParameter("id", id)
-          .setReadOnly(true)
-          .uniqueResultOptional();
-    }
+        .setParameter("id", id)
+        .setReadOnly(true)
+        .uniqueResultOptional());
   }
 
   @Override
   public Training update(Training training) {
-    try (Session session = sessionFactory.openSession()) {
-      Transaction transaction = session.beginTransaction();
-      Training updatedTraining = null;
-
-      try {
-        updatedTraining = session.merge(training);
-        updatedTraining = session.createQuery("""
+    return executeTransactionalOperation(session -> {
+      Training updatedTraining = session.merge(training);
+      return session.createQuery("""
                 from Training t
                 join fetch t.trainee trainee
                 join fetch trainee.user
@@ -185,31 +163,17 @@ public class TrainingRepository implements GeneralRepository<Long, Training> {
                 join fetch t.type
                 where t.id=:id
                 """, Training.class)
-            .setParameter("id", updatedTraining.getId())
-            .setReadOnly(true)
-            .uniqueResult();
-        transaction.commit();
-      } catch (Exception ex) {
-        log.error("update: exception {}", ex.getMessage(), ex);
-        transaction.rollback();
-      }
-
-      return updatedTraining;
-    }
+          .setParameter("id", updatedTraining.getId())
+          .setReadOnly(true)
+          .uniqueResult();
+    });
   }
 
   @Override
   public void delete(Training training) {
-    try (Session session = sessionFactory.openSession()) {
-      Transaction transaction = session.beginTransaction();
-
-      try {
-        session.remove(training);
-        transaction.commit();
-      } catch (Exception ex) {
-        log.error("delete: exception {}", ex.getMessage(), ex);
-        transaction.rollback();
-      }
-    }
+    executeOperation(session -> {
+      session.remove(training);
+      return null;
+    });
   }
 }

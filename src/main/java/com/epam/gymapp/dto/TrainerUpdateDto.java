@@ -2,8 +2,8 @@ package com.epam.gymapp.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,18 +15,18 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TrainerUpdateDto {
 
-  @NotBlank(message = "Username must be specified")
+  @NotBlank(message = "{validation.user.not-blank.username}")
   private String username;
 
-  @NotBlank(message = "Trainer's first name must be specified")
+  @NotBlank(message = "{validation.trainer.not-blank.first-name}")
   private String firstName;
 
-  @NotBlank(message = "Trainer's last name must be specified")
+  @NotBlank(message = "{validation.trainer.not-blank.last-name}")
   private String lastName;
 
   @JsonProperty(access = Access.READ_ONLY)
   private String specialization;
 
-  @NotNull(message = "Active status must be specified")
+  @NotNull(message = "{validation.user.not-null.is-active}")
   private Boolean isActive;
 }

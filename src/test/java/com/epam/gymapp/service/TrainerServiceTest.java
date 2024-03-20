@@ -24,11 +24,14 @@ import com.epam.gymapp.mapper.TrainerMapper;
 import com.epam.gymapp.mapper.TrainingMapper;
 import com.epam.gymapp.model.Trainer;
 import com.epam.gymapp.model.Training;
+import com.epam.gymapp.model.TrainingType;
 import com.epam.gymapp.repository.TrainerRepository;
 import com.epam.gymapp.repository.TrainingRepository;
+import com.epam.gymapp.repository.TrainingTypeRepository;
 import com.epam.gymapp.repository.UserRepository;
 import com.epam.gymapp.test.utils.TrainerTestUtil;
 import com.epam.gymapp.test.utils.TrainingTestUtil;
+import com.epam.gymapp.test.utils.TrainingTypeTestUtil;
 import com.epam.gymapp.test.utils.UserTestUtil;
 import com.epam.gymapp.utils.UserUtils;
 import java.time.LocalDate;
@@ -58,6 +61,9 @@ public class TrainerServiceTest {
   private TrainingRepository trainingRepository;
 
   @Mock
+  private TrainingTypeRepository trainingTypeRepository;
+
+  @Mock
   private TrainerMapper trainerMapper;
 
   @Mock
@@ -68,6 +74,7 @@ public class TrainerServiceTest {
     // Given
     TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
     Trainer mappedTrainer = TrainerTestUtil.getTrainer1FromTrainerCreateDto();
+    TrainingType trainingType = TrainingTypeTestUtil.getTrainingType1();
     Trainer createdTrainer = TrainerTestUtil.getTrainer1();
     UserCredentialsDto expectedResult = UserTestUtil.getTrainerUserCredentialsDto1();
 
@@ -81,6 +88,7 @@ public class TrainerServiceTest {
           .thenReturn(createdTrainer.getUser().getUsername());
       userUtils.when(UserUtils::generatePassword)
           .thenReturn(createdTrainer.getUser().getPassword());
+      when(trainingTypeRepository.findByName(any())).thenReturn(Optional.of(trainingType));
       when(trainerRepository.save(any())).thenReturn(createdTrainer);
       when(trainerMapper.toUserCredentialsDto(any())).thenReturn(expectedResult);
 
@@ -92,6 +100,7 @@ public class TrainerServiceTest {
       userUtils.verify(() -> UserUtils.getNumberOfAppearances(any()), times(1));
       userUtils.verify(() -> UserUtils.buildUsername(any(), anyInt()), times(1));
       userUtils.verify(UserUtils::generatePassword, times(1));
+      verify(trainingTypeRepository, times(1)).findByName(any());
       verify(trainerRepository, times(1)).save(any());
       verify(trainerMapper, times(1)).toUserCredentialsDto(any());
 
@@ -166,7 +175,7 @@ public class TrainerServiceTest {
     // When
     when(trainerRepository.findByUsername(any())).thenReturn(Optional.of(trainer));
     doNothing().when(trainerMapper).updateTrainer(any(), any());
-    when(trainerRepository.update(any())).thenReturn(trainer);
+    when(trainerRepository.save(any())).thenReturn(trainer);
     when(trainerMapper.toTrainerInfoDtoAfterUpdate(any())).thenReturn(expectedResult);
 
     TrainerInfoDto result = trainerService.updateTrainer(trainerUpdateDto);
@@ -174,7 +183,7 @@ public class TrainerServiceTest {
     // Then
     verify(trainerRepository, times(1)).findByUsername(any());
     verify(trainerMapper, times(1)).updateTrainer(any(), any());
-    verify(trainerRepository, times(1)).update(any());
+    verify(trainerRepository, times(1)).save(any());
     verify(trainerMapper, times(1)).toTrainerInfoDtoAfterUpdate(any());
 
     assertThat(result, samePropertyValuesAs(expectedResult));

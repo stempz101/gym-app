@@ -178,7 +178,7 @@ public class TraineeServiceTest {
     // When
     when(traineeRepository.findByUsername(any())).thenReturn(Optional.of(trainee));
     doNothing().when(traineeMapper).updateTrainee(any(), any());
-    when(traineeRepository.update(any())).thenReturn(trainee);
+    when(traineeRepository.save(any())).thenReturn(trainee);
     when(traineeMapper.toTraineeInfoDtoAfterUpdate(any())).thenReturn(expectedResult);
 
     TraineeInfoDto result = traineeService.updateTrainee(traineeUpdateDto);
@@ -186,7 +186,7 @@ public class TraineeServiceTest {
     // Then
     verify(traineeRepository, times(1)).findByUsername(any());
     verify(traineeMapper, times(1)).updateTrainee(any(), any());
-    verify(traineeRepository, times(1)).update(any());
+    verify(traineeRepository, times(1)).save(any());
     verify(traineeMapper, times(1)).toTraineeInfoDtoAfterUpdate(any());
 
     assertThat(result, samePropertyValuesAs(expectedResult));
@@ -275,7 +275,7 @@ public class TraineeServiceTest {
     // When
     when(traineeRepository.findByUsername(any())).thenReturn(Optional.of(trainee));
     when(trainerRepository.findAllByUsernameIn(any())).thenReturn(trainers);
-    when(traineeRepository.update(any())).thenReturn(trainee);
+    when(traineeRepository.save(any())).thenReturn(trainee);
     when(trainerMapper.toTrainerShortInfoDto(any()))
         .thenReturn(expectedResult.get(0), expectedResult.get(1));
 
@@ -284,7 +284,7 @@ public class TraineeServiceTest {
     // Then
     verify(traineeRepository, times(1)).findByUsername(any());
     verify(trainerRepository, times(1)).findAllByUsernameIn(any());
-    verify(traineeRepository, times(1)).update(any());
+    verify(traineeRepository, times(1)).save(any());
     verify(trainerMapper, times(2)).toTrainerShortInfoDto(any());
 
     assertThat(result, hasSize(expectedResult.size()));

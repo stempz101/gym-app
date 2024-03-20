@@ -1,9 +1,9 @@
 package com.epam.gymapp.dto;
 
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,19 +15,19 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TrainingCreateDto {
 
-  @NotBlank(message = "Trainee username must be specified")
+  @NotBlank(message = "{validation.trainee.not-blank.username}")
   private String traineeUsername;
 
-  @NotBlank(message = "Trainer username must be specified")
+  @NotBlank(message = "{validation.trainer.not-blank.username}")
   private String trainerUsername;
 
-  @NotBlank(message = "Training name must be specified")
+  @NotBlank(message = "{validation.training.not-blank.name}")
   private String name;
 
-  @NotNull(message = "Training date must be specified")
+  @NotNull(message = "{validation.training.not-null.date}")
   private LocalDate date;
 
-  @NotNull(message = "Training duration must be specified")
-  @Min(value = 0, message = "Training duration must be a non-negative value")
+  @NotNull(message = "{validation.training.not-null.duration}")
+  @Min(value = 0, message = "{validation.training.min.duration}")
   private Integer duration;
 }

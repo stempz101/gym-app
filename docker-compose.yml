@@ -16,17 +16,25 @@ services:
 
   main-app:
     container_name: main-app
-    image: stempz/gym-app:1.0.0
+    image: stempz/gym-app:1.0.1
     ports:
       - '8080:8080'
     environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: gym_db
-      POSTGRES_USERNAME: user
-      POSTGRES_PASSWORD: pass
+      DB_URL: jdbc:postgresql://postgres/gym_db
+      DB_USER: user
+      DB_PASSWORD: pass
     depends_on:
       - postgres
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - main-app
 
 volumes:
   gym-volume:

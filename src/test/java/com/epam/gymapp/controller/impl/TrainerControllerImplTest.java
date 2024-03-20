@@ -1,4 +1,4 @@
-package com.epam.gymapp.controller;
+package com.epam.gymapp.controller.impl;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
@@ -15,7 +15,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.epam.gymapp.controller.error.ExceptionHandlerController;
 import com.epam.gymapp.dto.TrainerCreateDto;
 import com.epam.gymapp.dto.TrainerInfoDto;
 import com.epam.gymapp.dto.TrainerShortInfoDto;
@@ -25,61 +24,46 @@ import com.epam.gymapp.dto.UserCredentialsDto;
 import com.epam.gymapp.exception.TrainerNotFoundException;
 import com.epam.gymapp.exception.UnauthorizedException;
 import com.epam.gymapp.jwt.JwtProcess;
-import com.epam.gymapp.logging.LoggerHelper;
+import com.epam.gymapp.service.LoggingService;
 import com.epam.gymapp.service.TrainerService;
 import com.epam.gymapp.test.utils.JwtUtil;
 import com.epam.gymapp.test.utils.TrainerTestUtil;
 import com.epam.gymapp.test.utils.TrainingTestUtil;
 import com.epam.gymapp.test.utils.UserTestUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Spy;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
-@ExtendWith(MockitoExtension.class)
-public class TrainerControllerTest {
+@ExtendWith(SpringExtension.class)
+@WebMvcTest(value = TrainerControllerImpl.class)
+public class TrainerControllerImplTest {
 
-  @InjectMocks
-  private TrainerController trainerController;
-
-  @Mock
+  @MockBean
   private TrainerService trainerService;
 
-  @Mock
+  @MockBean
   private JwtProcess jwtProcess;
 
-  @Spy
-  private LoggerHelper loggerHelper;
+  @SpyBean
+  private LoggingService loggingService;
 
+  @Autowired
   private MockMvc mockMvc;
 
+  @Autowired
   private ObjectMapper objectMapper;
-
-  @BeforeEach
-  void setUp() {
-    mockMvc = MockMvcBuilders
-        .standaloneSetup(trainerController)
-        .setValidator(new LocalValidatorFactoryBean())
-        .setControllerAdvice(new ExceptionHandlerController())
-        .build();
-
-    objectMapper = new ObjectMapper();
-    objectMapper.registerModule(new JavaTimeModule());
-  }
 
   @Test
   void createTrainer_Success() throws Exception {
@@ -90,7 +74,7 @@ public class TrainerControllerTest {
     // When
     when(trainerService.createTrainer(any())).thenReturn(expectedResult);
 
-    ResultActions result = mockMvc.perform(post("/trainers")
+    ResultActions result = mockMvc.perform(post("/api/trainers")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerCreateDto)));
 
@@ -112,7 +96,7 @@ public class TrainerControllerTest {
     trainerCreateDto.setFirstName(null);
 
     // When
-    ResultActions result = mockMvc.perform(post("/trainers")
+    ResultActions result = mockMvc.perform(post("/api/trainers")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerCreateDto)));
 
@@ -134,7 +118,7 @@ public class TrainerControllerTest {
     trainerCreateDto.setFirstName("");
 
     // When
-    ResultActions result = mockMvc.perform(post("/trainers")
+    ResultActions result = mockMvc.perform(post("/api/trainers")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerCreateDto)));
 
@@ -156,7 +140,7 @@ public class TrainerControllerTest {
     trainerCreateDto.setFirstName("    ");
 
     // When
-    ResultActions result = mockMvc.perform(post("/trainers")
+    ResultActions result = mockMvc.perform(post("/api/trainers")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerCreateDto)));
 
@@ -178,7 +162,7 @@ public class TrainerControllerTest {
     trainerCreateDto.setLastName(null);
 
     // When
-    ResultActions result = mockMvc.perform(post("/trainers")
+    ResultActions result = mockMvc.perform(post("/api/trainers")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerCreateDto)));
 
@@ -200,7 +184,7 @@ public class TrainerControllerTest {
     trainerCreateDto.setLastName("");
 
     // When
-    ResultActions result = mockMvc.perform(post("/trainers")
+    ResultActions result = mockMvc.perform(post("/api/trainers")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerCreateDto)));
 
@@ -222,7 +206,7 @@ public class TrainerControllerTest {
     trainerCreateDto.setLastName("    ");
 
     // When
-    ResultActions result = mockMvc.perform(post("/trainers")
+    ResultActions result = mockMvc.perform(post("/api/trainers")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerCreateDto)));
 
@@ -244,7 +228,7 @@ public class TrainerControllerTest {
     trainerCreateDto.setSpecialization(null);
 
     // When
-    ResultActions result = mockMvc.perform(post("/trainers")
+    ResultActions result = mockMvc.perform(post("/api/trainers")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerCreateDto)));
 
@@ -266,7 +250,7 @@ public class TrainerControllerTest {
     trainerCreateDto.setSpecialization("");
 
     // When
-    ResultActions result = mockMvc.perform(post("/trainers")
+    ResultActions result = mockMvc.perform(post("/api/trainers")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerCreateDto)));
 
@@ -288,7 +272,7 @@ public class TrainerControllerTest {
     trainerCreateDto.setSpecialization("    ");
 
     // When
-    ResultActions result = mockMvc.perform(post("/trainers")
+    ResultActions result = mockMvc.perform(post("/api/trainers")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerCreateDto)));
 
@@ -312,7 +296,7 @@ public class TrainerControllerTest {
     trainerCreateDto.setSpecialization(null);
 
     // When
-    ResultActions result = mockMvc.perform(post("/trainers")
+    ResultActions result = mockMvc.perform(post("/api/trainers")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerCreateDto)));
 
@@ -340,7 +324,7 @@ public class TrainerControllerTest {
     // When
     when(trainerService.createTrainer(any())).thenThrow(RuntimeException.class);
 
-    ResultActions result = mockMvc.perform(post("/trainers")
+    ResultActions result = mockMvc.perform(post("/api/trainers")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerCreateDto)));
 
@@ -360,7 +344,7 @@ public class TrainerControllerTest {
     doNothing().when(jwtProcess).processToken(any());
     when(trainerService.selectTrainers()).thenReturn(expectedResult);
 
-    ResultActions result = mockMvc.perform(get("/trainers")
+    ResultActions result = mockMvc.perform(get("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then
@@ -438,7 +422,7 @@ public class TrainerControllerTest {
     // When
     doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
 
-    ResultActions result = mockMvc.perform(get("/trainers")
+    ResultActions result = mockMvc.perform(get("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then
@@ -461,7 +445,7 @@ public class TrainerControllerTest {
     doNothing().when(jwtProcess).processToken(any());
     when(trainerService.selectTrainers()).thenThrow(RuntimeException.class);
 
-    ResultActions result = mockMvc.perform(get("/trainers")
+    ResultActions result = mockMvc.perform(get("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then
@@ -481,7 +465,7 @@ public class TrainerControllerTest {
     doNothing().when(jwtProcess).processToken(any());
     when(trainerService.selectTrainer(any())).thenReturn(expectedResult);
 
-    ResultActions result = mockMvc.perform(get("/trainers/" + trainerUsername)
+    ResultActions result = mockMvc.perform(get("/api/trainers/" + trainerUsername)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then
@@ -519,7 +503,7 @@ public class TrainerControllerTest {
     // When
     doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
 
-    ResultActions result = mockMvc.perform(get("/trainers/" + trainerUsername)
+    ResultActions result = mockMvc.perform(get("/api/trainers/" + trainerUsername)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then
@@ -543,7 +527,7 @@ public class TrainerControllerTest {
     doNothing().when(jwtProcess).processToken(any());
     when(trainerService.selectTrainer(any())).thenThrow(new TrainerNotFoundException(trainerUsername));
 
-    ResultActions result = mockMvc.perform(get("/trainers/" + trainerUsername)
+    ResultActions result = mockMvc.perform(get("/api/trainers/" + trainerUsername)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then
@@ -568,7 +552,7 @@ public class TrainerControllerTest {
     doNothing().when(jwtProcess).processToken(any());
     when(trainerService.selectTrainer(any())).thenThrow(RuntimeException.class);
 
-    ResultActions result = mockMvc.perform(get("/trainers/" + trainerUsername)
+    ResultActions result = mockMvc.perform(get("/api/trainers/" + trainerUsername)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then
@@ -588,7 +572,7 @@ public class TrainerControllerTest {
     doNothing().when(jwtProcess).processToken(any());
     when(trainerService.updateTrainer(any())).thenReturn(expectedResult);
 
-    ResultActions result = mockMvc.perform(put("/trainers")
+    ResultActions result = mockMvc.perform(put("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
@@ -628,7 +612,7 @@ public class TrainerControllerTest {
     String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    ResultActions result = mockMvc.perform(put("/trainers")
+    ResultActions result = mockMvc.perform(put("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
@@ -652,7 +636,7 @@ public class TrainerControllerTest {
     String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    ResultActions result = mockMvc.perform(put("/trainers")
+    ResultActions result = mockMvc.perform(put("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
@@ -676,7 +660,7 @@ public class TrainerControllerTest {
     String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    ResultActions result = mockMvc.perform(put("/trainers")
+    ResultActions result = mockMvc.perform(put("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
@@ -700,7 +684,7 @@ public class TrainerControllerTest {
     String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    ResultActions result = mockMvc.perform(put("/trainers")
+    ResultActions result = mockMvc.perform(put("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
@@ -724,7 +708,7 @@ public class TrainerControllerTest {
     String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    ResultActions result = mockMvc.perform(put("/trainers")
+    ResultActions result = mockMvc.perform(put("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
@@ -748,7 +732,7 @@ public class TrainerControllerTest {
     String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    ResultActions result = mockMvc.perform(put("/trainers")
+    ResultActions result = mockMvc.perform(put("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
@@ -772,7 +756,7 @@ public class TrainerControllerTest {
     String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    ResultActions result = mockMvc.perform(put("/trainers")
+    ResultActions result = mockMvc.perform(put("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
@@ -796,7 +780,7 @@ public class TrainerControllerTest {
     String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    ResultActions result = mockMvc.perform(put("/trainers")
+    ResultActions result = mockMvc.perform(put("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
@@ -820,7 +804,7 @@ public class TrainerControllerTest {
     String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    ResultActions result = mockMvc.perform(put("/trainers")
+    ResultActions result = mockMvc.perform(put("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
@@ -844,7 +828,7 @@ public class TrainerControllerTest {
     String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    ResultActions result = mockMvc.perform(put("/trainers")
+    ResultActions result = mockMvc.perform(put("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
@@ -856,7 +840,7 @@ public class TrainerControllerTest {
             status().isBadRequest(),
             content().contentType(MediaType.APPLICATION_JSON),
             jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Active status must be specified")
+            jsonPath("$[0].message").value("Activation status must be specified")
         );
   }
 
@@ -871,7 +855,7 @@ public class TrainerControllerTest {
     String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    ResultActions result = mockMvc.perform(put("/trainers")
+    ResultActions result = mockMvc.perform(put("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
@@ -888,7 +872,7 @@ public class TrainerControllerTest {
                     "Username must be specified",
                     "Trainer's first name must be specified",
                     "Trainer's last name must be specified",
-                    "Active status must be specified"
+                    "Activation status must be specified"
                 ))
         );
   }
@@ -902,7 +886,7 @@ public class TrainerControllerTest {
     // When
     doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
 
-    ResultActions result = mockMvc.perform(put("/trainers")
+    ResultActions result = mockMvc.perform(put("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
@@ -929,7 +913,7 @@ public class TrainerControllerTest {
     when(trainerService.updateTrainer(any()))
         .thenThrow(new TrainerNotFoundException(trainerUpdateDto.getUsername()));
 
-    ResultActions result = mockMvc.perform(put("/trainers")
+    ResultActions result = mockMvc.perform(put("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
@@ -957,7 +941,7 @@ public class TrainerControllerTest {
     doNothing().when(jwtProcess).processToken(any());
     when(trainerService.updateTrainer(any())).thenThrow(RuntimeException.class);
 
-    ResultActions result = mockMvc.perform(put("/trainers")
+    ResultActions result = mockMvc.perform(put("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
@@ -979,7 +963,7 @@ public class TrainerControllerTest {
     doNothing().when(jwtProcess).processToken(any());
     when(trainerService.findUnassignedTrainers(any())).thenReturn(expectedResult);
 
-    ResultActions result = mockMvc.perform(get("/trainers/unassigned/" + traineeUsername)
+    ResultActions result = mockMvc.perform(get("/api/trainers/unassigned/" + traineeUsername)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then
@@ -1019,7 +1003,7 @@ public class TrainerControllerTest {
     // When
     doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
 
-    ResultActions result = mockMvc.perform(get("/trainers/unassigned/" + traineeUsername)
+    ResultActions result = mockMvc.perform(get("/api/trainers/unassigned/" + traineeUsername)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then
@@ -1043,7 +1027,7 @@ public class TrainerControllerTest {
     doNothing().when(jwtProcess).processToken(any());
     when(trainerService.findUnassignedTrainers(any())).thenThrow(RuntimeException.class);
 
-    ResultActions result = mockMvc.perform(get("/trainers/unassigned/" + traineeUsername)
+    ResultActions result = mockMvc.perform(get("/api/trainers/unassigned/" + traineeUsername)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then
@@ -1067,7 +1051,7 @@ public class TrainerControllerTest {
     doNothing().when(jwtProcess).processToken(any());
     when(trainerService.findTrainerTrainings(any(), any(), any(), any())).thenReturn(expectedResult);
 
-    ResultActions result = mockMvc.perform(get("/trainers/trainings")
+    ResultActions result = mockMvc.perform(get("/api/trainers/trainings")
         .param("username", trainerUsername)
         .param("fromDate", fromDate)
         .param("toDate", toDate)
@@ -1096,7 +1080,7 @@ public class TrainerControllerTest {
     String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    ResultActions result = mockMvc.perform(get("/trainers/trainings")
+    ResultActions result = mockMvc.perform(get("/api/trainers/trainings")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then
@@ -1120,7 +1104,7 @@ public class TrainerControllerTest {
     // When
     doNothing().when(jwtProcess).processToken(any());
 
-    ResultActions result = mockMvc.perform(get("/trainers/trainings")
+    ResultActions result = mockMvc.perform(get("/api/trainers/trainings")
         .param("username", trainerUsername)
         .param("fromDate", fromDate)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
@@ -1147,7 +1131,7 @@ public class TrainerControllerTest {
     // When
     doNothing().when(jwtProcess).processToken(any());
 
-    ResultActions result = mockMvc.perform(get("/trainers/trainings")
+    ResultActions result = mockMvc.perform(get("/api/trainers/trainings")
         .param("username", trainerUsername)
         .param("toDate", toDate)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
@@ -1177,7 +1161,7 @@ public class TrainerControllerTest {
     // When
     doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
 
-    ResultActions result = mockMvc.perform(get("/trainers/trainings")
+    ResultActions result = mockMvc.perform(get("/api/trainers/trainings")
         .param("username", trainerUsername)
         .param("fromDate", fromDate)
         .param("toDate", toDate)
@@ -1210,7 +1194,7 @@ public class TrainerControllerTest {
     when(trainerService.findTrainerTrainings(any(), any(), any(), any()))
         .thenThrow(RuntimeException.class);
 
-    ResultActions result = mockMvc.perform(get("/trainers/trainings")
+    ResultActions result = mockMvc.perform(get("/api/trainers/trainings")
         .param("username", trainerUsername)
         .param("fromDate", fromDate)
         .param("toDate", toDate)

@@ -1,7 +1,7 @@
 package com.epam.gymapp.dto;
 
 import com.epam.gymapp.dto.validation.Password;
-import javax.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class UserCredentialsDto {
 
-  @NotBlank(message = "Username must be specified")
+  @NotBlank(message = "{validation.user.not-blank.username}")
   private String username;
 
   @Password

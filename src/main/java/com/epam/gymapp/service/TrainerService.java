@@ -13,6 +13,7 @@ import com.epam.gymapp.model.Trainer;
 import com.epam.gymapp.model.User;
 import com.epam.gymapp.repository.TrainerRepository;
 import com.epam.gymapp.repository.TrainingRepository;
+import com.epam.gymapp.repository.TrainingTypeRepository;
 import com.epam.gymapp.repository.UserRepository;
 import com.epam.gymapp.utils.UserUtils;
 import java.time.LocalDate;
@@ -21,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -31,10 +33,12 @@ public class TrainerService {
   private final TrainerRepository trainerRepository;
   private final UserRepository userRepository;
   private final TrainingRepository trainingRepository;
+  private final TrainingTypeRepository trainingTypeRepository;
 
   private final TrainerMapper trainerMapper;
   private final TrainingMapper trainingMapper;
 
+  @Transactional
   public UserCredentialsDto createTrainer(TrainerCreateDto trainerCreateDto) {
     log.info("Creating Trainer: {}", trainerCreateDto);
 
@@ -48,11 +52,14 @@ public class TrainerService {
     trainerUser.setUsername(UserUtils.buildUsername(trainerUser, numOfAppearances));
     trainerUser.setPassword(UserUtils.generatePassword());
 
+    setSpecializationIfExists(trainer);
+
     trainer = trainerRepository.save(trainer);
 
     return trainerMapper.toUserCredentialsDto(trainer);
   }
 
+  @Transactional(readOnly = true)
   public List<TrainerInfoDto> selectTrainers() {
     log.info("Selecting all Trainers");
 
@@ -61,6 +68,7 @@ public class TrainerService {
         .toList();
   }
 
+  @Transactional(readOnly = true)
   public TrainerInfoDto selectTrainer(String username) {
     log.info("Selecting Trainer by username: {}", username);
 
@@ -70,6 +78,7 @@ public class TrainerService {
     return trainerMapper.toTrainerInfoDto(trainer);
   }
 
+  @Transactional
   public TrainerInfoDto updateTrainer(TrainerUpdateDto trainerUpdateDto) {
     log.info("Updating Trainer: {}", trainerUpdateDto);
 
@@ -77,11 +86,12 @@ public class TrainerService {
         .orElseThrow(() -> new TrainerNotFoundException(trainerUpdateDto.getUsername()));
 
     trainerMapper.updateTrainer(trainerUpdateDto, trainer);
-    trainer = trainerRepository.update(trainer);
+    trainer = trainerRepository.save(trainer);
 
     return trainerMapper.toTrainerInfoDtoAfterUpdate(trainer);
   }
 
+  @Transactional(readOnly = true)
   public List<TrainingInfoDto> findTrainerTrainings(String username, LocalDate fromDate,
       LocalDate toDate, String traineeName) {
     log.info("""
@@ -96,6 +106,7 @@ public class TrainerService {
         .toList();
   }
 
+  @Transactional(readOnly = true)
   public List<TrainerShortInfoDto> findUnassignedTrainers(String traineeUsername) {
     log.info("Getting unassigned active Trainers on Trainee with username: {}", traineeUsername);
 
@@ -103,5 +114,10 @@ public class TrainerService {
         .stream()
         .map(trainerMapper::toTrainerShortInfoDto)
         .toList();
+  }
+
+  private void setSpecializationIfExists(Trainer trainer) {
+    trainingTypeRepository.findByName(trainer.getSpecialization().getName())
+        .ifPresent(trainer::setSpecialization);
   }
 }

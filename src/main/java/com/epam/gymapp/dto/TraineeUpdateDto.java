@@ -1,8 +1,8 @@
 package com.epam.gymapp.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,19 +14,19 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TraineeUpdateDto {
 
-  @NotBlank(message = "Username must be specified")
+  @NotBlank(message = "{validation.user.not-blank.username}")
   private String username;
 
-  @NotBlank(message = "Trainee's first name must be specified")
+  @NotBlank(message = "{validation.trainee.not-blank.first-name}")
   private String firstName;
 
-  @NotBlank(message = "Trainee's last name must be specified")
+  @NotBlank(message = "{validation.trainee.not-blank.last-name}")
   private String lastName;
 
   private LocalDate dateOfBirth;
 
   private String address;
 
-  @NotNull(message = "Active status must be specified")
+  @NotNull(message = "{validation.user.not-null.is-active}")
   private Boolean isActive;
 }

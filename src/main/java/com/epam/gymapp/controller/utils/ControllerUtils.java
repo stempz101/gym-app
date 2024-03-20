@@ -1,13 +1,13 @@
 package com.epam.gymapp.controller.utils;
 
 import com.epam.gymapp.exception.ParsingException;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
 import lombok.experimental.UtilityClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

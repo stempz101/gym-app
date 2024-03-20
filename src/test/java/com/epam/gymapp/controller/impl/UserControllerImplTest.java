@@ -1,4 +1,4 @@
-package com.epam.gymapp.controller;
+package com.epam.gymapp.controller.impl;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
@@ -13,7 +13,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.epam.gymapp.controller.error.ExceptionHandlerController;
 import com.epam.gymapp.dto.ChangePasswordDto;
 import com.epam.gymapp.dto.JwtDto;
 import com.epam.gymapp.dto.UserActivateDto;
@@ -22,57 +21,42 @@ import com.epam.gymapp.exception.BadCredentialsException;
 import com.epam.gymapp.exception.UnauthorizedException;
 import com.epam.gymapp.exception.UserNotFoundException;
 import com.epam.gymapp.jwt.JwtProcess;
-import com.epam.gymapp.logging.LoggerHelper;
+import com.epam.gymapp.service.LoggingService;
 import com.epam.gymapp.service.UserService;
 import com.epam.gymapp.test.utils.JwtUtil;
 import com.epam.gymapp.test.utils.UserTestUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.util.HashMap;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Spy;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
-@ExtendWith(MockitoExtension.class)
-public class UserControllerTest {
+@ExtendWith(SpringExtension.class)
+@WebMvcTest(value = UserControllerImpl.class)
+public class UserControllerImplTest {
 
-  @InjectMocks
-  private UserController userController;
-
-  @Mock
+  @MockBean
   private UserService userService;
 
-  @Mock
+  @MockBean
   private JwtProcess jwtProcess;
 
-  @Spy
-  private LoggerHelper loggerHelper;
+  @SpyBean
+  private LoggingService loggingService;
 
+  @Autowired
   private MockMvc mockMvc;
 
+  @Autowired
   private ObjectMapper objectMapper;
-
-  @BeforeEach
-  void setUp() {
-    mockMvc = MockMvcBuilders
-        .standaloneSetup(userController)
-        .setValidator(new LocalValidatorFactoryBean())
-        .setControllerAdvice(new ExceptionHandlerController())
-        .build();
-
-    objectMapper = new ObjectMapper();
-    objectMapper.registerModule(new JavaTimeModule());
-  }
 
   @Test
   void authenticate_Success() throws Exception {
@@ -84,7 +68,7 @@ public class UserControllerTest {
     // When
     when(userService.authenticate(any())).thenReturn(expectedResult);
 
-    ResultActions result = mockMvc.perform(post("/users/authenticate")
+    ResultActions result = mockMvc.perform(post("/api/users/authenticate")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userCredentialsDto)));
 
@@ -105,7 +89,7 @@ public class UserControllerTest {
     userCredentialsDto.setUsername(null);
 
     // When
-    ResultActions result = mockMvc.perform(post("/users/authenticate")
+    ResultActions result = mockMvc.perform(post("/api/users/authenticate")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userCredentialsDto)));
 
@@ -127,7 +111,7 @@ public class UserControllerTest {
     userCredentialsDto.setUsername("");
 
     // When
-    ResultActions result = mockMvc.perform(post("/users/authenticate")
+    ResultActions result = mockMvc.perform(post("/api/users/authenticate")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userCredentialsDto)));
 
@@ -149,7 +133,7 @@ public class UserControllerTest {
     userCredentialsDto.setUsername("    ");
 
     // When
-    ResultActions result = mockMvc.perform(post("/users/authenticate")
+    ResultActions result = mockMvc.perform(post("/api/users/authenticate")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userCredentialsDto)));
 
@@ -171,7 +155,7 @@ public class UserControllerTest {
     userCredentialsDto.setPassword(null);
 
     // When
-    ResultActions result = mockMvc.perform(post("/users/authenticate")
+    ResultActions result = mockMvc.perform(post("/api/users/authenticate")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userCredentialsDto)));
 
@@ -193,7 +177,7 @@ public class UserControllerTest {
     userCredentialsDto.setPassword(new char[0]);
 
     // When
-    ResultActions result = mockMvc.perform(post("/users/authenticate")
+    ResultActions result = mockMvc.perform(post("/api/users/authenticate")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userCredentialsDto)));
 
@@ -216,7 +200,7 @@ public class UserControllerTest {
     // When
     when(userService.authenticate(any())).thenThrow(new BadCredentialsException());
 
-    ResultActions result = mockMvc.perform(post("/users/authenticate")
+    ResultActions result = mockMvc.perform(post("/api/users/authenticate")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userCredentialsDto)));
 
@@ -239,7 +223,7 @@ public class UserControllerTest {
     // When
     when(userService.authenticate(any())).thenThrow(RuntimeException.class);
 
-    ResultActions result = mockMvc.perform(post("/users/authenticate")
+    ResultActions result = mockMvc.perform(post("/api/users/authenticate")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userCredentialsDto)));
 
@@ -257,7 +241,7 @@ public class UserControllerTest {
     // When
     doNothing().when(userService).changePassword(any());
 
-    ResultActions result = mockMvc.perform(put("/users/change-password")
+    ResultActions result = mockMvc.perform(put("/api/users/change-password")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(changePasswordDto)));
 
@@ -274,7 +258,7 @@ public class UserControllerTest {
     changePasswordDto.setUsername(null);
 
     // When
-    ResultActions result = mockMvc.perform(put("/users/change-password")
+    ResultActions result = mockMvc.perform(put("/api/users/change-password")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(changePasswordDto)));
 
@@ -296,7 +280,7 @@ public class UserControllerTest {
     changePasswordDto.setUsername("");
 
     // When
-    ResultActions result = mockMvc.perform(put("/users/change-password")
+    ResultActions result = mockMvc.perform(put("/api/users/change-password")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(changePasswordDto)));
 
@@ -318,7 +302,7 @@ public class UserControllerTest {
     changePasswordDto.setUsername("    ");
 
     // When
-    ResultActions result = mockMvc.perform(put("/users/change-password")
+    ResultActions result = mockMvc.perform(put("/api/users/change-password")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(changePasswordDto)));
 
@@ -340,7 +324,7 @@ public class UserControllerTest {
     changePasswordDto.setOldPassword(null);
 
     // When
-    ResultActions result = mockMvc.perform(put("/users/change-password")
+    ResultActions result = mockMvc.perform(put("/api/users/change-password")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(changePasswordDto)));
 
@@ -362,7 +346,7 @@ public class UserControllerTest {
     changePasswordDto.setOldPassword(new char[0]);
 
     // When
-    ResultActions result = mockMvc.perform(put("/users/change-password")
+    ResultActions result = mockMvc.perform(put("/api/users/change-password")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(changePasswordDto)));
 
@@ -384,7 +368,7 @@ public class UserControllerTest {
     changePasswordDto.setNewPassword(null);
 
     // When
-    ResultActions result = mockMvc.perform(put("/users/change-password")
+    ResultActions result = mockMvc.perform(put("/api/users/change-password")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(changePasswordDto)));
 
@@ -406,7 +390,7 @@ public class UserControllerTest {
     changePasswordDto.setNewPassword(new char[0]);
 
     // When
-    ResultActions result = mockMvc.perform(put("/users/change-password")
+    ResultActions result = mockMvc.perform(put("/api/users/change-password")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(changePasswordDto)));
 
@@ -428,7 +412,7 @@ public class UserControllerTest {
     changePasswordDto.setNewPassword(changePasswordDto.getOldPassword());
 
     // When
-    ResultActions result = mockMvc.perform(put("/users/change-password")
+    ResultActions result = mockMvc.perform(put("/api/users/change-password")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(changePasswordDto)));
 
@@ -452,7 +436,7 @@ public class UserControllerTest {
     // When
     doThrow(new BadCredentialsException()).when(userService).changePassword(any());
 
-    ResultActions result = mockMvc.perform(put("/users/change-password")
+    ResultActions result = mockMvc.perform(put("/api/users/change-password")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(changePasswordDto)));
 
@@ -475,7 +459,7 @@ public class UserControllerTest {
     // When
     doThrow(RuntimeException.class).when(userService).changePassword(any());
 
-    ResultActions result = mockMvc.perform(put("/users/change-password")
+    ResultActions result = mockMvc.perform(put("/api/users/change-password")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(changePasswordDto)));
 
@@ -495,7 +479,7 @@ public class UserControllerTest {
     doNothing().when(jwtProcess).processToken(any());
     doNothing().when(userService).changeActivationStatus(any());
 
-    ResultActions result = mockMvc.perform(patch("/users/change-activation-status")
+    ResultActions result = mockMvc.perform(patch("/api/users/change-activation-status")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userActivation)));
@@ -514,7 +498,7 @@ public class UserControllerTest {
     String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    ResultActions result = mockMvc.perform(patch("/users/change-activation-status")
+    ResultActions result = mockMvc.perform(patch("/api/users/change-activation-status")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userActivation)));
@@ -538,7 +522,7 @@ public class UserControllerTest {
     String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    ResultActions result = mockMvc.perform(patch("/users/change-activation-status")
+    ResultActions result = mockMvc.perform(patch("/api/users/change-activation-status")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userActivation)));
@@ -562,7 +546,7 @@ public class UserControllerTest {
     String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    ResultActions result = mockMvc.perform(patch("/users/change-activation-status")
+    ResultActions result = mockMvc.perform(patch("/api/users/change-activation-status")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userActivation)));
@@ -586,7 +570,7 @@ public class UserControllerTest {
     String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    ResultActions result = mockMvc.perform(patch("/users/change-activation-status")
+    ResultActions result = mockMvc.perform(patch("/api/users/change-activation-status")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userActivation)));
@@ -611,7 +595,7 @@ public class UserControllerTest {
     // When
     doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
 
-    ResultActions result = mockMvc.perform(patch("/users/change-activation-status")
+    ResultActions result = mockMvc.perform(patch("/api/users/change-activation-status")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userActivation)));
@@ -638,7 +622,7 @@ public class UserControllerTest {
     doThrow(new UserNotFoundException(userActivation.getUsername()))
         .when(userService).changeActivationStatus(any());
 
-    ResultActions result = mockMvc.perform(patch("/users/change-activation-status")
+    ResultActions result = mockMvc.perform(patch("/api/users/change-activation-status")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userActivation)));
@@ -666,7 +650,7 @@ public class UserControllerTest {
     doNothing().when(jwtProcess).processToken(any());
     doThrow(RuntimeException.class).when(userService).changeActivationStatus(any());
 
-    ResultActions result = mockMvc.perform(patch("/users/change-activation-status")
+    ResultActions result = mockMvc.perform(patch("/api/users/change-activation-status")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userActivation)));

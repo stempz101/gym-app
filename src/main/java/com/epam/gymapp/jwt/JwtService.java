@@ -5,13 +5,13 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import javax.crypto.SecretKey;
-import javax.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
@@ -21,7 +21,7 @@ public class JwtService {
 
   public static final int EXPIRATION_PERIOD_OF_TOKENS = 1000 * 60 * 60 * 12; // 12 hours
 
-  @Value("${security.secret-key}")
+  @Value("${application.security.secret-key}")
   private String SECRET_KEY;
 
   public String extractUsername(String token) {

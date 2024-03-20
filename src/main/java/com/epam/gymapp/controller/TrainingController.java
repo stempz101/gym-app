@@ -1,89 +1,71 @@
 package com.epam.gymapp.controller;
 
+import com.epam.gymapp.dto.ErrorMessageDto;
 import com.epam.gymapp.dto.TrainingCreateDto;
 import com.epam.gymapp.dto.TrainingInfoDto;
-import com.epam.gymapp.jwt.JwtProcess;
-import com.epam.gymapp.logging.LoggerHelper;
-import com.epam.gymapp.service.TrainingService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
-import io.swagger.annotations.Authorization;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
-@RestController
-@RequestMapping("/trainings")
-@Api(value = "Training management API")
-@RequiredArgsConstructor
-public class TrainingController {
-
-  private static final Logger log = LoggerFactory.getLogger(TrainingController.class);
-
-  private final TrainingService trainingService;
-  private final JwtProcess jwtProcess;
-
-  private final LoggerHelper loggerHelper;
+@RequestMapping("/api/trainings")
+@Tag(name = "Trainings", description = "Training management API")
+public interface TrainingController {
 
   @PostMapping
-  @ApiOperation(
-      value = "Adding training",
-      notes = "Specify training duration in minutes",
-      authorizations = @Authorization(value = "bearer")
-  )
-  @ApiResponses(value = {
-      @ApiResponse(code = 200, message = "Training successfully added"),
-      @ApiResponse(code = 400, message = "Specified wrong fields"),
-      @ApiResponse(code = 401, message = "Attempted unauthorized access"),
-      @ApiResponse(code = 404, message = "Trainee or trainer not found"),
-      @ApiResponse(code = 500, message = "Application failed to process the request")
+  @Operation(summary = "Adding training", tags = {"Trainings"},
+      security = @SecurityRequirement(name = "bearerAuth"), responses = {
+      @ApiResponse(responseCode = "200", description = "Training successfully added"),
+      @ApiResponse(responseCode = "400", description = "Specified wrong fields",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = ErrorMessageDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "401", description = "Attempted unauthorized access",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = ErrorMessageDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "404", description = "Trainee or trainer not found",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = ErrorMessageDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "500", description = "Application failed to process the request")
   })
-  public void addTraining(
-      @RequestBody @Valid TrainingCreateDto trainingCreateDto,
-      HttpServletRequest request
-  ) {
-    loggerHelper.transactionalLogging(() -> {
-      log.info("REST call received - Endpoint: '{}', Method: {}, Body: {}",
-          request.getRequestURI(), request.getMethod(), trainingCreateDto);
-
-      jwtProcess.processToken(request);
-      trainingService.addTraining(trainingCreateDto);
-
-      log.info("REST call completed - Endpoint: '{}', Method: {}, Status: {}",
-          request.getRequestURI(), request.getMethod(), HttpStatus.OK.value());
-      return null;
-    });
-  }
+  void addTraining(@RequestBody @Valid TrainingCreateDto trainingCreateDto,
+      HttpServletRequest request);
 
   @GetMapping
-  @ApiOperation(value = "Selecting trainings", authorizations = @Authorization(value = "bearer"))
-  @ApiResponses(value = {
-      @ApiResponse(code = 200, message = "List of trainings successfully returned"),
-      @ApiResponse(code = 401, message = "Attempted unauthorized access"),
-      @ApiResponse(code = 500, message = "Application failed to process the request")
+  @Operation(summary = "Selecting trainings", tags = {"Trainings"},
+      security = @SecurityRequirement(name = "bearerAuth"), responses = {
+      @ApiResponse(responseCode = "200", description = "List of trainings successfully returned",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = TrainingInfoDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "401", description = "Attempted unauthorized access",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = ErrorMessageDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "500", description = "Application failed to process the request")
   })
-  public List<TrainingInfoDto> selectTrainings(HttpServletRequest request) {
-    return loggerHelper.transactionalLogging(() -> {
-      log.info("REST call received - Endpoint: '{}', Method: {}",
-          request.getRequestURI(), request.getMethod());
-
-      jwtProcess.processToken(request);
-      List<TrainingInfoDto> trainings = trainingService.selectTrainings();
-
-      log.info("REST call completed - Endpoint: '{}', Method: {}, Status: {}",
-          request.getRequestURI(), request.getMethod(), HttpStatus.OK.value());
-      return trainings;
-    });
-  }
+  List<TrainingInfoDto> selectTrainings(HttpServletRequest request);
 }

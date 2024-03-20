@@ -27,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +44,7 @@ public class TraineeService {
   private final TrainingMapper trainingMapper;
   private final TrainerMapper trainerMapper;
 
+  @Transactional
   public UserCredentialsDto createTrainee(TraineeCreateDto traineeCreateDto) {
     log.info("Creating Trainee: {}", traineeCreateDto);
 
@@ -61,6 +63,7 @@ public class TraineeService {
     return traineeMapper.toUserCredentialsDto(trainee);
   }
 
+  @Transactional(readOnly = true)
   public List<TraineeInfoDto> selectTrainees() {
     log.info("Selecting all Trainees");
 
@@ -69,6 +72,7 @@ public class TraineeService {
         .toList();
   }
 
+  @Transactional(readOnly = true)
   public TraineeInfoDto selectTrainee(String username) {
     log.info("Selecting Trainee by username: {}", username);
 
@@ -78,6 +82,7 @@ public class TraineeService {
     return traineeMapper.toTraineeInfoDto(trainee);
   }
 
+  @Transactional
   public TraineeInfoDto updateTrainee(TraineeUpdateDto traineeUpdateDto) {
     log.info("Updating Trainee: {}", traineeUpdateDto);
 
@@ -85,20 +90,23 @@ public class TraineeService {
         .orElseThrow(() -> new TraineeNotFoundException(traineeUpdateDto.getUsername()));
 
     traineeMapper.updateTrainee(traineeUpdateDto, trainee);
-    trainee = traineeRepository.update(trainee);
+    trainee = traineeRepository.save(trainee);
 
     return traineeMapper.toTraineeInfoDtoAfterUpdate(trainee);
   }
 
+  @Transactional
   public void deleteTrainee(String username) {
     log.info("Deleting Trainee by username: {}", username);
 
     Trainee trainee = traineeRepository.findByUsername(username)
         .orElseThrow(() -> new TraineeNotFoundException(username));
 
+    trainingRepository.deleteByTraineeId(trainee.getId());
     traineeRepository.delete(trainee);
   }
 
+  @Transactional(readOnly = true)
   public List<TrainingInfoDto> findTraineeTrainings(String username, LocalDate fromDate,
       LocalDate toDate, String trainerName, String trainingType) {
     log.info("""
@@ -117,6 +125,7 @@ public class TraineeService {
         .toList();
   }
 
+  @Transactional
   public List<TrainerShortInfoDto> updateTrainerList(TraineeTrainersUpdateDto traineeTrainersUpdateDto) {
     log.info("Updating Trainee's (username={}) Trainer list: {}",
         traineeTrainersUpdateDto.getTraineeUsername(), traineeTrainersUpdateDto.getTrainerUsernames());
@@ -129,7 +138,7 @@ public class TraineeService {
     checkForMissingTrainerUsernames(traineeTrainersUpdateDto.getTrainerUsernames(), trainers);
 
     trainee.setTrainers(trainers);
-    trainee = traineeRepository.update(trainee);
+    trainee = traineeRepository.save(trainee);
 
     return trainee.getTrainers().stream()
         .map(trainerMapper::toTrainerShortInfoDto)

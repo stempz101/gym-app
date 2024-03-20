@@ -2,7 +2,7 @@ package com.epam.gymapp.dto;
 
 import com.epam.gymapp.dto.validation.Password;
 import com.epam.gymapp.dto.validation.PasswordsNotEqual;
-import javax.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,13 +15,13 @@ import lombok.NoArgsConstructor;
 @PasswordsNotEqual
 public class ChangePasswordDto {
 
-  @NotBlank(message = "Username must be specified")
+  @NotBlank(message = "{validation.user.not-blank.username}")
   private String username;
 
-  @Password(message = "Current password must be specified")
+  @Password(message = "{validation.user.password.old-password}")
   private char[] oldPassword;
 
-  @Password(message = "New password must be specified")
+  @Password(message = "{validation.user.password.new-password}")
   private char[] newPassword;
 
   @Override

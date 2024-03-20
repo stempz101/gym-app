@@ -1,4 +1,4 @@
-package com.epam.gymapp.controller;
+package com.epam.gymapp.controller.impl;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
@@ -11,56 +11,43 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.epam.gymapp.controller.error.ExceptionHandlerController;
 import com.epam.gymapp.exception.UnauthorizedException;
 import com.epam.gymapp.jwt.JwtProcess;
-import com.epam.gymapp.logging.LoggerHelper;
 import com.epam.gymapp.model.TrainingType;
+import com.epam.gymapp.service.LoggingService;
 import com.epam.gymapp.service.TrainingTypeService;
 import com.epam.gymapp.test.utils.JwtUtil;
 import com.epam.gymapp.test.utils.TrainingTypeTestUtil;
 import com.epam.gymapp.test.utils.UserTestUtil;
 import java.util.HashMap;
 import java.util.List;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Spy;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
-@ExtendWith(MockitoExtension.class)
-public class TrainingTypeControllerTest {
+@ExtendWith(SpringExtension.class)
+@WebMvcTest(value = TrainingTypeControllerImpl.class)
+public class TrainingTypeControllerImplTest {
 
-  @InjectMocks
-  private TrainingTypeController trainingTypeController;
-
-  @Mock
+  @MockBean
   private TrainingTypeService trainingTypeService;
 
-  @Mock
+  @MockBean
   private JwtProcess jwtProcess;
 
-  @Spy
-  private LoggerHelper loggerHelper;
+  @SpyBean
+  private LoggingService loggingService;
 
+  @Autowired
   private MockMvc mockMvc;
-
-  @BeforeEach
-  void setUp() {
-    mockMvc = MockMvcBuilders
-        .standaloneSetup(trainingTypeController)
-        .setValidator(new LocalValidatorFactoryBean())
-        .setControllerAdvice(new ExceptionHandlerController())
-        .build();
-  }
 
   @Test
   void selectTrainingTypes_Success() throws Exception {
@@ -72,7 +59,7 @@ public class TrainingTypeControllerTest {
     doNothing().when(jwtProcess).processToken(any());
     when(trainingTypeService.selectTrainingTypes()).thenReturn(expectedResult);
 
-    ResultActions result = mockMvc.perform(get("/training-types")
+    ResultActions result = mockMvc.perform(get("/api/training-types")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then
@@ -105,7 +92,7 @@ public class TrainingTypeControllerTest {
     // When
     doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
 
-    ResultActions result = mockMvc.perform(get("/training-types")
+    ResultActions result = mockMvc.perform(get("/api/training-types")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then
@@ -128,7 +115,7 @@ public class TrainingTypeControllerTest {
     doNothing().when(jwtProcess).processToken(any());
     when(trainingTypeService.selectTrainingTypes()).thenThrow(RuntimeException.class);
 
-    ResultActions result = mockMvc.perform(get("/training-types")
+    ResultActions result = mockMvc.perform(get("/api/training-types")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then

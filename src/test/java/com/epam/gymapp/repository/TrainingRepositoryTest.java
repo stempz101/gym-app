@@ -8,7 +8,7 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.epam.gymapp.config.TestHibernateConfiguration;
@@ -20,6 +20,7 @@ import com.epam.gymapp.test.utils.TrainerTestUtil;
 import com.epam.gymapp.test.utils.TrainingTestUtil;
 import com.epam.gymapp.test.utils.TrainingTypeTestUtil;
 import com.epam.gymapp.test.utils.UserTestUtil;
+import jakarta.persistence.PersistenceException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -83,18 +84,14 @@ public class TrainingRepositoryTest {
 
   @Test
   @Order(2)
-  void save_IfExceptionReturnNull_Success() {
+  void save_IfException_Failure() {
     // Given
     Training training = TrainingTestUtil.getNewTraining8();
     training.setTrainee(null);
     training.setTrainer(null);
 
-    // When
-    Training result = trainingRepository.save(training);
-    log.debug("save_IfExceptionReturnNull_Success: result {}", result);
-
-    // Then
-    assertNull(result);
+    // When & Then
+    assertThrows(PersistenceException.class, () -> trainingRepository.save(training));
   }
 
   @Test
@@ -214,19 +211,15 @@ public class TrainingRepositoryTest {
 
   @Test
   @Order(9)
-  void update_IfExceptionReturnNull_Success() {
+  void update_IfException_Failure() {
     // Given
     Training training = TrainingTestUtil.getNewTraining8();
     training.setTrainee(null);
     training.setTrainer(null);
     training.setType(null);
 
-    // When
-    Training result = trainingRepository.update(training);
-    log.debug("update_IfExceptionReturnNull_Success: result {}", result);
-
-    // Then
-    assertNull(result);
+    // When & Then
+    assertThrows(PersistenceException.class, () -> trainingRepository.update(training));
   }
 
   @Test
@@ -241,7 +234,7 @@ public class TrainingRepositoryTest {
 
   @Test
   @Order(11)
-  void delete_IfException_Success() {
+  void delete_IfException_Failure() {
     // Given
     Training training = TrainingTestUtil.getTraining7();
     training.setId(-1L);
@@ -249,7 +242,7 @@ public class TrainingRepositoryTest {
     training.setTrainer(null);
     training.setType(null);
 
-    // When
-    trainingRepository.delete(training);
+    // When & Then
+    assertThrows(PersistenceException.class, () -> trainingRepository.delete(training));
   }
 }

@@ -10,7 +10,7 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.epam.gymapp.config.TestHibernateConfiguration;
@@ -18,6 +18,7 @@ import com.epam.gymapp.model.Trainer;
 import com.epam.gymapp.test.utils.TrainerTestUtil;
 import com.epam.gymapp.test.utils.TrainingTypeTestUtil;
 import com.epam.gymapp.test.utils.UserTestUtil;
+import jakarta.persistence.PersistenceException;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
@@ -104,17 +105,13 @@ public class TrainerRepositoryTest {
 
   @Test
   @Order(3)
-  void save_IfExceptionReturnNull_Success() {
+  void save_IfException_Failure() {
     // Given
     Trainer trainer = TrainerTestUtil.getNewTrainer5();
     trainer.setUser(null);
 
-    // When
-    Trainer result = trainerRepository.save(trainer);
-    log.debug("save_IfExceptionReturnNull_Success: result {}", result);
-
-    // Then
-    assertNull(result);
+    // When & Then
+    assertThrows(PersistenceException.class, () -> trainerRepository.save(trainer));
   }
 
   @Test
@@ -260,17 +257,13 @@ public class TrainerRepositoryTest {
 
   @Test
   @Order(12)
-  void update_IfExceptionReturnNull_Success() {
+  void update_IfException_Failure() {
     // Given
     Trainer trainer = TrainerTestUtil.getNewTrainer6();
     trainer.setUser(null);
 
-    // When
-    Trainer result = trainerRepository.update(trainer);
-    log.debug("update_IfExceptionReturnNull_Success: result {}", result);
-
-    // Then
-    assertNull(result);
+    // When & Then
+    assertThrows(PersistenceException.class, () -> trainerRepository.update(trainer));
   }
 
   @Test
@@ -285,13 +278,13 @@ public class TrainerRepositoryTest {
 
   @Test
   @Order(14)
-  void delete_IfException_Success() {
+  void delete_IfException_Failure() {
     // Given
     Trainer trainer = TrainerTestUtil.getTrainer4();
     trainer.setId(-1L);
     trainer.setUser(null);
 
-    // When
-    trainerRepository.delete(trainer);
+    // When & Then
+    assertThrows(PersistenceException.class, () -> trainerRepository.delete(trainer));
   }
 }

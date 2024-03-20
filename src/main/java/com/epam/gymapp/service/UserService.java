@@ -1,14 +1,16 @@
 package com.epam.gymapp.service;
 
 import com.epam.gymapp.dto.ChangePasswordDto;
+import com.epam.gymapp.dto.JwtDto;
 import com.epam.gymapp.dto.UserActivateDto;
 import com.epam.gymapp.dto.UserCredentialsDto;
 import com.epam.gymapp.exception.BadCredentialsException;
 import com.epam.gymapp.exception.UserNotFoundException;
+import com.epam.gymapp.jwt.JwtService;
 import com.epam.gymapp.model.User;
 import com.epam.gymapp.repository.UserRepository;
-import com.epam.gymapp.validator.UserValidator;
 import java.util.Arrays;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,21 +23,19 @@ public class UserService {
   private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
   private final UserRepository userRepository;
-  private final UserValidator userValidator;
+  private final JwtService jwtService;
 
-  public void authenticate(UserCredentialsDto userCredentialsDto) {
-    userValidator.validate(userCredentialsDto);
-
+  public JwtDto authenticate(UserCredentialsDto userCredentialsDto) {
     log.info("Authenticating User: {}", userCredentialsDto.getUsername());
 
-    checkCredentials(userCredentialsDto.getUsername(), userCredentialsDto.getPassword());
+    User user = checkCredentials(userCredentialsDto.getUsername(), userCredentialsDto.getPassword());
+    String token = jwtService.generateToken(user);
 
     log.info("User (username={}) authenticated successfully", userCredentialsDto.getUsername());
+    return new JwtDto(token);
   }
 
   public void changePassword(ChangePasswordDto changePasswordDto) {
-    userValidator.validate(changePasswordDto);
-
     log.info("Changing User's (username={}) password", changePasswordDto.getUsername());
 
     User user = checkCredentials(changePasswordDto.getUsername(), changePasswordDto.getOldPassword());
@@ -48,8 +48,6 @@ public class UserService {
   }
 
   public void changeActivationStatus(UserActivateDto userActivateDto) {
-    userValidator.validate(userActivateDto);
-
     if (userActivateDto.getIsActive()) {
       log.info("Activating User: {}", userActivateDto.getUsername());
     } else {
@@ -67,6 +65,10 @@ public class UserService {
     } else {
       log.info("User deactivated successfully: {}", userActivateDto.getUsername());
     }
+  }
+
+  public Optional<User> getUserByUsername(String username) {
+    return userRepository.findByUsername(username);
   }
 
   private User checkCredentials(String username, char[] password) {

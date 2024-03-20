@@ -20,7 +20,6 @@ import com.epam.gymapp.dto.TrainerUpdateDto;
 import com.epam.gymapp.dto.TrainingInfoDto;
 import com.epam.gymapp.dto.UserCredentialsDto;
 import com.epam.gymapp.exception.TrainerNotFoundException;
-import com.epam.gymapp.exception.TrainerValidationException;
 import com.epam.gymapp.mapper.TrainerMapper;
 import com.epam.gymapp.mapper.TrainingMapper;
 import com.epam.gymapp.model.Trainer;
@@ -32,7 +31,6 @@ import com.epam.gymapp.test.utils.TrainerTestUtil;
 import com.epam.gymapp.test.utils.TrainingTestUtil;
 import com.epam.gymapp.test.utils.UserTestUtil;
 import com.epam.gymapp.utils.UserUtils;
-import com.epam.gymapp.validator.TrainerValidator;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
@@ -42,7 +40,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -59,9 +56,6 @@ public class TrainerServiceTest {
 
   @Mock
   private TrainingRepository trainingRepository;
-
-  @Spy
-  private TrainerValidator trainerValidator;
 
   @Mock
   private TrainerMapper trainerMapper;
@@ -93,7 +87,6 @@ public class TrainerServiceTest {
       UserCredentialsDto result = trainerService.createTrainer(trainerCreateDto);
 
       // Then
-      verify(trainerValidator, times(1)).validate(any(TrainerCreateDto.class));
       verify(trainerMapper, times(1)).toTrainer(any());
       verify(userRepository, times(1)).findAllByFirstAndLastNames(any(), any());
       userUtils.verify(() -> UserUtils.getNumberOfAppearances(any()), times(1));
@@ -104,111 +97,6 @@ public class TrainerServiceTest {
 
       assertThat(result, samePropertyValuesAs(expectedResult));
     }
-  }
-
-  @Test
-  void createTrainer_TrainerCreateDtoIsNull_Failure() {
-    // When & Then
-    assertThrows(IllegalArgumentException.class, () -> trainerService.createTrainer(null));
-  }
-
-  @Test
-  void createTrainer_FirstNameIsNull_Failure() {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setFirstName(null);
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.createTrainer(trainerCreateDto));
-  }
-
-  @Test
-  void createTrainer_FirstNameIsEmpty_Failure() {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setFirstName("");
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.createTrainer(trainerCreateDto));
-  }
-
-  @Test
-  void createTrainer_FirstNameIsBlank_Failure() {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setFirstName("   ");
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.createTrainer(trainerCreateDto));
-  }
-
-  @Test
-  void createTrainer_LastNameIsNull_Failure() {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setLastName(null);
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.createTrainer(trainerCreateDto));
-  }
-
-  @Test
-  void createTrainer_LastNameIsEmpty_Failure() {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setLastName("");
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.createTrainer(trainerCreateDto));
-  }
-
-  @Test
-  void createTrainer_LastNameIsBlank_Failure() {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setLastName("   ");
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.createTrainer(trainerCreateDto));
-  }
-
-  @Test
-  void createTrainer_SpecializationIsNull_Failure() {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setSpecialization(null);
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.createTrainer(trainerCreateDto));
-  }
-
-  @Test
-  void createTrainer_SpecializationIsEmpty_Failure() {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setSpecialization("");
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.createTrainer(trainerCreateDto));
-  }
-
-  @Test
-  void createTrainer_SpecializationIsBlank_Failure() {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setSpecialization("   ");
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.createTrainer(trainerCreateDto));
   }
 
   @Test
@@ -273,162 +161,23 @@ public class TrainerServiceTest {
     // Given
     TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
     Trainer trainer = TrainerTestUtil.getTrainer1();
-    TrainerInfoDto expectedResult = TrainerTestUtil.getTrainerInfoDto1();
+    TrainerInfoDto expectedResult = TrainerTestUtil.getTrainerInfoDto1AfterUpdate();
 
     // When
     when(trainerRepository.findByUsername(any())).thenReturn(Optional.of(trainer));
     doNothing().when(trainerMapper).updateTrainer(any(), any());
     when(trainerRepository.update(any())).thenReturn(trainer);
-    when(trainerMapper.toTrainerInfoDto(any())).thenReturn(expectedResult);
+    when(trainerMapper.toTrainerInfoDtoAfterUpdate(any())).thenReturn(expectedResult);
 
     TrainerInfoDto result = trainerService.updateTrainer(trainerUpdateDto);
 
     // Then
-    verify(trainerValidator, times(1)).validate(any(TrainerUpdateDto.class));
     verify(trainerRepository, times(1)).findByUsername(any());
     verify(trainerMapper, times(1)).updateTrainer(any(), any());
     verify(trainerRepository, times(1)).update(any());
-    verify(trainerMapper, times(1)).toTrainerInfoDto(any());
+    verify(trainerMapper, times(1)).toTrainerInfoDtoAfterUpdate(any());
 
     assertThat(result, samePropertyValuesAs(expectedResult));
-  }
-
-  @Test
-  void updateTrainee_TraineeIsNull_Failure() {
-    // When & Then
-    assertThrows(IllegalArgumentException.class, () -> trainerService.updateTrainer(null));
-  }
-
-  @Test
-  void updateTrainer_UsernameIsNull_Failure() {
-    // Given
-    TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
-    trainerUpdateDto.setUsername(null);
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.updateTrainer(trainerUpdateDto));
-  }
-
-  @Test
-  void updateTrainer_UsernameIsEmpty_Failure() {
-    // Given
-    TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
-    trainerUpdateDto.setUsername("");
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.updateTrainer(trainerUpdateDto));
-  }
-
-  @Test
-  void updateTrainer_UsernameIsBlank_Failure() {
-    // Given
-    TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
-    trainerUpdateDto.setUsername("   ");
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.updateTrainer(trainerUpdateDto));
-  }
-
-  @Test
-  void updateTrainer_FirstNameIsNull_Failure() {
-    // Given
-    TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
-    trainerUpdateDto.setFirstName(null);
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.updateTrainer(trainerUpdateDto));
-  }
-
-  @Test
-  void updateTrainer_FirstNameIsEmpty_Failure() {
-    // Given
-    TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
-    trainerUpdateDto.setFirstName("");
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.updateTrainer(trainerUpdateDto));
-  }
-
-  @Test
-  void updateTrainer_FirstNameIsBlank_Failure() {
-    // Given
-    TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
-    trainerUpdateDto.setFirstName("   ");
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.updateTrainer(trainerUpdateDto));
-  }
-
-  @Test
-  void updateTrainer_LastNameIsNull_Failure() {
-    // Given
-    TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
-    trainerUpdateDto.setLastName(null);
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.updateTrainer(trainerUpdateDto));
-  }
-
-  @Test
-  void updateTrainer_LastNameIsEmpty_Failure() {
-    // Given
-    TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
-    trainerUpdateDto.setLastName("");
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.updateTrainer(trainerUpdateDto));
-  }
-
-  @Test
-  void updateTrainer_LastNameIsBlank_Failure() {
-    // Given
-    TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
-    trainerUpdateDto.setLastName("   ");
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.updateTrainer(trainerUpdateDto));
-  }
-
-  @Test
-  void updateTrainer_SpecializationIsNull_Failure() {
-    // Given
-    TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
-    trainerUpdateDto.setSpecialization(null);
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.updateTrainer(trainerUpdateDto));
-  }
-
-  @Test
-  void updateTrainer_SpecializationIsEmpty_Failure() {
-    // Given
-    TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
-    trainerUpdateDto.setSpecialization("");
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.updateTrainer(trainerUpdateDto));
-  }
-
-  @Test
-  void updateTrainer_SpecializationIsBlank_Failure() {
-    // Given
-    TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
-    trainerUpdateDto.setSpecialization("   ");
-
-    // When & Then
-    assertThrows(TrainerValidationException.class,
-        () -> trainerService.updateTrainer(trainerUpdateDto));
   }
 
   @Test

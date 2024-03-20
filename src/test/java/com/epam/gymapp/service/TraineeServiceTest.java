@@ -21,7 +21,6 @@ import com.epam.gymapp.dto.TrainerShortInfoDto;
 import com.epam.gymapp.dto.TrainingInfoDto;
 import com.epam.gymapp.dto.UserCredentialsDto;
 import com.epam.gymapp.exception.TraineeNotFoundException;
-import com.epam.gymapp.exception.TraineeValidationException;
 import com.epam.gymapp.exception.TrainerNotFoundException;
 import com.epam.gymapp.mapper.TraineeMapper;
 import com.epam.gymapp.mapper.TrainerMapper;
@@ -38,7 +37,6 @@ import com.epam.gymapp.test.utils.TrainerTestUtil;
 import com.epam.gymapp.test.utils.TrainingTestUtil;
 import com.epam.gymapp.test.utils.UserTestUtil;
 import com.epam.gymapp.utils.UserUtils;
-import com.epam.gymapp.validator.TraineeValidator;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
@@ -48,7 +46,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -68,9 +65,6 @@ public class TraineeServiceTest {
 
   @Mock
   private TrainerRepository trainerRepository;
-
-  @Spy
-  private TraineeValidator traineeValidator;
 
   @Mock
   private TraineeMapper traineeMapper;
@@ -105,7 +99,6 @@ public class TraineeServiceTest {
       UserCredentialsDto result = traineeService.createTrainee(traineeCreateDto);
 
       // Then
-      verify(traineeValidator, times(1)).validate(any(TraineeCreateDto.class));
       verify(traineeMapper, times(1)).toTrainee(any(TraineeCreateDto.class));
       verify(userRepository, times(1)).findAllByFirstAndLastNames(any(), any());
       userUtils.verify(() -> UserUtils.getNumberOfAppearances(any()), times(1));
@@ -116,78 +109,6 @@ public class TraineeServiceTest {
 
       assertThat(result, samePropertyValuesAs(expectedResult));
     }
-  }
-
-  @Test
-  void createTrainee_TraineeCreateDtoIsNull_Failure() {
-    // When & Then
-    assertThrows(IllegalArgumentException.class, () -> traineeService.createTrainee(null));
-  }
-
-  @Test
-  void createTrainee_FirstNameIsNull_Failure() {
-    // Given
-    TraineeCreateDto traineeCreateDto = TraineeTestUtil.getTraineeCreateDto1();
-    traineeCreateDto.setFirstName(null);
-
-    // When & Then
-    assertThrows(TraineeValidationException.class,
-        () -> traineeService.createTrainee(traineeCreateDto));
-  }
-
-  @Test
-  void createTrainee_FirstNameIsEmpty_Failure() {
-    // Given
-    TraineeCreateDto traineeCreateDto = TraineeTestUtil.getTraineeCreateDto1();
-    traineeCreateDto.setFirstName("");
-
-    // When & Then
-    assertThrows(TraineeValidationException.class,
-        () -> traineeService.createTrainee(traineeCreateDto));
-  }
-
-  @Test
-  void createTrainee_FirstNameIsBlank_Failure() {
-    // Given
-    TraineeCreateDto traineeCreateDto = TraineeTestUtil.getTraineeCreateDto1();
-    traineeCreateDto.setFirstName("   ");
-
-    // When & Then
-    assertThrows(TraineeValidationException.class,
-        () -> traineeService.createTrainee(traineeCreateDto));
-  }
-
-  @Test
-  void createTrainee_LastNameIsNull_Failure() {
-    // Given
-    TraineeCreateDto traineeCreateDto = TraineeTestUtil.getTraineeCreateDto1();
-    traineeCreateDto.setLastName(null);
-
-    // When & Then
-    assertThrows(TraineeValidationException.class,
-        () -> traineeService.createTrainee(traineeCreateDto));
-  }
-
-  @Test
-  void createTrainee_LastNameIsEmpty_Failure() {
-    // Given
-    TraineeCreateDto traineeCreateDto = TraineeTestUtil.getTraineeCreateDto1();
-    traineeCreateDto.setLastName("");
-
-    // When & Then
-    assertThrows(TraineeValidationException.class,
-        () -> traineeService.createTrainee(traineeCreateDto));
-  }
-
-  @Test
-  void createTrainee_LastNameIsBlank_Failure() {
-    // Given
-    TraineeCreateDto traineeCreateDto = TraineeTestUtil.getTraineeCreateDto1();
-    traineeCreateDto.setLastName("   ");
-
-    // When & Then
-    assertThrows(TraineeValidationException.class,
-        () -> traineeService.createTrainee(traineeCreateDto));
   }
 
   @Test
@@ -252,129 +173,23 @@ public class TraineeServiceTest {
     // Given
     TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
     Trainee trainee = TraineeTestUtil.getTrainee1();
-    TraineeInfoDto expectedResult = TraineeTestUtil.getTraineeInfoDto1();
+    TraineeInfoDto expectedResult = TraineeTestUtil.getTraineeInfoDto1AfterUpdate();
 
     // When
     when(traineeRepository.findByUsername(any())).thenReturn(Optional.of(trainee));
     doNothing().when(traineeMapper).updateTrainee(any(), any());
     when(traineeRepository.update(any())).thenReturn(trainee);
-    when(traineeMapper.toTraineeInfoDto(any())).thenReturn(expectedResult);
+    when(traineeMapper.toTraineeInfoDtoAfterUpdate(any())).thenReturn(expectedResult);
 
     TraineeInfoDto result = traineeService.updateTrainee(traineeUpdateDto);
 
     // Then
-    verify(traineeValidator, times(1)).validate(any(TraineeUpdateDto.class));
     verify(traineeRepository, times(1)).findByUsername(any());
     verify(traineeMapper, times(1)).updateTrainee(any(), any());
     verify(traineeRepository, times(1)).update(any());
-    verify(traineeMapper, times(1)).toTraineeInfoDto(any());
+    verify(traineeMapper, times(1)).toTraineeInfoDtoAfterUpdate(any());
 
     assertThat(result, samePropertyValuesAs(expectedResult));
-  }
-
-  @Test
-  void updateTrainee_TraineeIsNull_Failure() {
-    // When & Then
-    assertThrows(IllegalArgumentException.class, () -> traineeService.updateTrainee(null));
-  }
-
-  @Test
-  void updateTrainee_UsernameIsNull_Failure() {
-    // Given
-    TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
-    traineeUpdateDto.setUsername(null);
-
-    // When & Then
-    assertThrows(TraineeValidationException.class,
-        () -> traineeService.updateTrainee(traineeUpdateDto));
-  }
-
-  @Test
-  void updateTrainee_UsernameIsEmpty_Failure() {
-    // Given
-    TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
-    traineeUpdateDto.setUsername("");
-
-    // When & Then
-    assertThrows(TraineeValidationException.class,
-        () -> traineeService.updateTrainee(traineeUpdateDto));
-  }
-
-  @Test
-  void updateTrainee_UsernameIsBlank_Failure() {
-    // Given
-    TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
-    traineeUpdateDto.setUsername("   ");
-
-    // When & Then
-    assertThrows(TraineeValidationException.class,
-        () -> traineeService.updateTrainee(traineeUpdateDto));
-  }
-
-  @Test
-  void updateTrainee_FirstNameIsNull_Failure() {
-    // Given
-    TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
-    traineeUpdateDto.setFirstName(null);
-
-    // When & Then
-    assertThrows(TraineeValidationException.class,
-        () -> traineeService.updateTrainee(traineeUpdateDto));
-  }
-
-  @Test
-  void updateTrainee_FirstNameIsEmpty_Failure() {
-    // Given
-    TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
-    traineeUpdateDto.setFirstName("");
-
-    // When & Then
-    assertThrows(TraineeValidationException.class,
-        () -> traineeService.updateTrainee(traineeUpdateDto));
-  }
-
-  @Test
-  void updateTrainee_FirstNameIsBlank_Failure() {
-    // Given
-    TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
-    traineeUpdateDto.setFirstName("   ");
-
-    // When & Then
-    assertThrows(TraineeValidationException.class,
-        () -> traineeService.updateTrainee(traineeUpdateDto));
-  }
-
-  @Test
-  void updateTrainee_LastNameIsNull_Failure() {
-    // Given
-    TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
-    traineeUpdateDto.setLastName(null);
-
-    // When & Then
-    assertThrows(TraineeValidationException.class,
-        () -> traineeService.updateTrainee(traineeUpdateDto));
-  }
-
-  @Test
-  void updateTrainee_LastNameIsEmpty_Failure() {
-    // Given
-    TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
-    traineeUpdateDto.setLastName("");
-
-    // When & Then
-    assertThrows(TraineeValidationException.class,
-        () -> traineeService.updateTrainee(traineeUpdateDto));
-  }
-
-  @Test
-  void updateTrainee_LastNameIsBlank_Failure() {
-    // Given
-    TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
-    traineeUpdateDto.setLastName("   ");
-
-    // When & Then
-    assertThrows(TraineeValidationException.class,
-        () -> traineeService.updateTrainee(traineeUpdateDto));
   }
 
   @Test

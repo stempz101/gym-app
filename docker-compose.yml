@@ -14,5 +14,19 @@ services:
     volumes:
       - gym-volume:/var/lib/postgresql/data
 
+  main-app:
+    container_name: main-app
+    image: stempz/gym-app:1.0.0
+    ports:
+      - '8080:8080'
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: gym_db
+      POSTGRES_USERNAME: user
+      POSTGRES_PASSWORD: pass
+    depends_on:
+      - postgres
+
 volumes:
   gym-volume:

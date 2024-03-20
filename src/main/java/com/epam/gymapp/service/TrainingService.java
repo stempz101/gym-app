@@ -11,7 +11,6 @@ import com.epam.gymapp.model.Training;
 import com.epam.gymapp.repository.TraineeRepository;
 import com.epam.gymapp.repository.TrainerRepository;
 import com.epam.gymapp.repository.TrainingRepository;
-import com.epam.gymapp.validator.TrainingValidator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -28,14 +27,10 @@ public class TrainingService {
   private final TraineeRepository traineeRepository;
   private final TrainerRepository trainerRepository;
 
-  private final TrainingValidator trainingValidator;
-
   private final TrainingMapper trainingMapper;
 
-  public TrainingInfoDto createTraining(TrainingCreateDto trainingCreateDto) {
+  public void addTraining(TrainingCreateDto trainingCreateDto) {
     log.info("Creating Training: {}", trainingCreateDto);
-
-    trainingValidator.validate(trainingCreateDto);
 
     Trainee trainee = traineeRepository.findByUsername(trainingCreateDto.getTraineeUsername())
         .orElseThrow(() -> new TraineeNotFoundException(trainingCreateDto.getTraineeUsername()));
@@ -48,7 +43,8 @@ public class TrainingService {
     training.setType(trainer.getSpecialization());
 
     training = trainingRepository.save(training);
-    return trainingMapper.toTrainingInfoDto(training);
+
+    log.info("Training added successfully: {}", training);
   }
 
   public List<TrainingInfoDto> selectTrainings() {

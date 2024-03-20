@@ -15,7 +15,6 @@ import com.epam.gymapp.repository.TrainerRepository;
 import com.epam.gymapp.repository.TrainingRepository;
 import com.epam.gymapp.repository.UserRepository;
 import com.epam.gymapp.utils.UserUtils;
-import com.epam.gymapp.validator.TrainerValidator;
 import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -33,15 +32,11 @@ public class TrainerService {
   private final UserRepository userRepository;
   private final TrainingRepository trainingRepository;
 
-  private final TrainerValidator trainerValidator;
-
   private final TrainerMapper trainerMapper;
   private final TrainingMapper trainingMapper;
 
   public UserCredentialsDto createTrainer(TrainerCreateDto trainerCreateDto) {
     log.info("Creating Trainer: {}", trainerCreateDto);
-
-    trainerValidator.validate(trainerCreateDto);
 
     Trainer trainer = trainerMapper.toTrainer(trainerCreateDto);
     User trainerUser = trainer.getUser();
@@ -78,15 +73,13 @@ public class TrainerService {
   public TrainerInfoDto updateTrainer(TrainerUpdateDto trainerUpdateDto) {
     log.info("Updating Trainer: {}", trainerUpdateDto);
 
-    trainerValidator.validate(trainerUpdateDto);
-
     Trainer trainer = trainerRepository.findByUsername(trainerUpdateDto.getUsername())
         .orElseThrow(() -> new TrainerNotFoundException(trainerUpdateDto.getUsername()));
 
     trainerMapper.updateTrainer(trainerUpdateDto, trainer);
     trainer = trainerRepository.update(trainer);
 
-    return trainerMapper.toTrainerInfoDto(trainer);
+    return trainerMapper.toTrainerInfoDtoAfterUpdate(trainer);
   }
 
   public List<TrainingInfoDto> findTrainerTrainings(String username, LocalDate fromDate,

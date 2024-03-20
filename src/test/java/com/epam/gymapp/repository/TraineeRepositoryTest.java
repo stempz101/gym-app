@@ -8,13 +8,14 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.epam.gymapp.config.TestHibernateConfiguration;
 import com.epam.gymapp.model.Trainee;
 import com.epam.gymapp.test.utils.TraineeTestUtil;
 import com.epam.gymapp.test.utils.UserTestUtil;
+import jakarta.persistence.PersistenceException;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
@@ -69,17 +70,13 @@ public class TraineeRepositoryTest {
 
   @Test
   @Order(2)
-  void save_IfExceptionReturnNull_Success() {
+  void save_IfException_Failure() {
     // Given
     Trainee trainee = TraineeTestUtil.getNewTrainee5();
     trainee.setUser(null);
 
-    // When
-    Trainee result = traineeRepository.save(trainee);
-    log.debug("save_IfExceptionReturnNull_Success: result {}", result);
-
-    // Then
-    assertNull(result);
+    // When & Then
+    assertThrows(PersistenceException.class, () -> traineeRepository.save(trainee));
   }
 
   @Test
@@ -186,17 +183,13 @@ public class TraineeRepositoryTest {
 
   @Test
   @Order(9)
-  void update_IfExceptionReturnNull_Success() {
+  void update_IfException_Failure() {
     // Given
     Trainee trainee = TraineeTestUtil.getNewTrainee5();
     trainee.setUser(null);
 
-    // When
-    Trainee result = traineeRepository.update(trainee);
-    log.debug("update_IfExceptionReturnNull_Success: result {}", result);
-
-    // Then
-    assertNull(result);
+    // When & Then
+    assertThrows(PersistenceException.class, () -> traineeRepository.update(trainee));
   }
 
   @Test
@@ -205,19 +198,19 @@ public class TraineeRepositoryTest {
     // Given
     Trainee trainee = TraineeTestUtil.getTrainee4();
 
-    // Then
+    // When
     traineeRepository.delete(trainee);
   }
 
   @Test
   @Order(11)
-  void delete_IfException_Success() {
+  void delete_IfException_Failure() {
     // Given
     Trainee trainee = TraineeTestUtil.getTrainee4();
     trainee.setId(-1L);
     trainee.setTrainers(null);
 
-    // Then
-    traineeRepository.delete(trainee);
+    // When & Then
+    assertThrows(PersistenceException.class, () -> traineeRepository.delete(trainee));
   }
 }

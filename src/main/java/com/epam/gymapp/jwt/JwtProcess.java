@@ -3,7 +3,7 @@ package com.epam.gymapp.jwt;
 import com.epam.gymapp.exception.UnauthorizedException;
 import com.epam.gymapp.model.User;
 import com.epam.gymapp.service.UserService;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

@@ -1,9 +1,9 @@
 package com.epam.gymapp.dto.validation;
 
 import com.epam.gymapp.dto.ChangePasswordDto;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
 import java.util.Arrays;
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
 
 public class PasswordsNotEqualValidator implements
     ConstraintValidator<PasswordsNotEqual, ChangePasswordDto> {

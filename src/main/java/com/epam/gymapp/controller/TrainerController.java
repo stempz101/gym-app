@@ -1,30 +1,24 @@
 package com.epam.gymapp.controller;
 
-import com.epam.gymapp.controller.utils.ControllerUtils;
-import com.epam.gymapp.dto.TraineeInfoDto;
+import com.epam.gymapp.dto.ErrorMessageDto;
 import com.epam.gymapp.dto.TrainerCreateDto;
 import com.epam.gymapp.dto.TrainerInfoDto;
 import com.epam.gymapp.dto.TrainerShortInfoDto;
 import com.epam.gymapp.dto.TrainerUpdateDto;
 import com.epam.gymapp.dto.TrainingInfoDto;
 import com.epam.gymapp.dto.UserCredentialsDto;
-import com.epam.gymapp.jwt.JwtProcess;
-import com.epam.gymapp.logging.LoggerHelper;
-import com.epam.gymapp.service.TrainerService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
-import io.swagger.annotations.Authorization;
-import java.time.LocalDate;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Map;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,194 +27,154 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
 
-@RestController
-@RequestMapping("/trainers")
-@Api(value = "Trainer management API")
-@RequiredArgsConstructor
-public class TrainerController {
-
-  private static final Logger log = LoggerFactory.getLogger(TrainerController.class);
-
-  private final TrainerService trainerService;
-  private final JwtProcess jwtProcess;
-
-  private final LoggerHelper loggerHelper;
+@RequestMapping("/api/trainers")
+@Tag(name = "Trainers", description = "Trainer management API")
+public interface TrainerController {
 
   @PostMapping
-  @ApiOperation(
-      value = "Creating trainer",
-      response = UserCredentialsDto.class
-  )
-  @ApiResponses(value = {
-      @ApiResponse(code = 201, message = "Trainer successfully created"),
-      @ApiResponse(code = 400, message = "Specified wrong fields"),
-      @ApiResponse(code = 500, message = "Application failed to process the request")
+  @Operation(summary = "Creating trainer", tags = {"Trainers"}, responses = {
+      @ApiResponse(responseCode = "201", description = "Trainer successfully created",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              schema = @Schema(implementation = UserCredentialsDto.class)
+          )
+      ),
+      @ApiResponse(responseCode = "400", description = "Specified wrong fields",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = ErrorMessageDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "500", description = "Application failed to process the request")
   })
   @ResponseStatus(HttpStatus.CREATED)
-  public UserCredentialsDto createTrainer(
-      @RequestBody @Valid TrainerCreateDto trainerCreateDto,
-      HttpServletRequest request
-  ) {
-    return loggerHelper.transactionalLogging(() -> {
-      log.info("REST call received - Endpoint: '{}', Method: {}, Body: {}",
-          request.getRequestURI(), request.getMethod(), trainerCreateDto);
-
-      UserCredentialsDto userCredentialsDto = trainerService.createTrainer(trainerCreateDto);
-
-      log.info("REST call completed - Endpoint: '{}', Method: {}, Status: {}",
-          request.getRequestURI(), request.getMethod(), HttpStatus.CREATED.value());
-      return userCredentialsDto;
-    });
-  }
+  UserCredentialsDto createTrainer(@RequestBody @Valid TrainerCreateDto trainerCreateDto,
+      HttpServletRequest request);
 
   @GetMapping
-  @ApiOperation(
-      value = "Selecting trainers",
-      response = TraineeInfoDto.class,
-      authorizations = @Authorization(value = "bearer")
-  )
-  @ApiResponses(value = {
-      @ApiResponse(code = 200, message = "List of trainers successfully returned"),
-      @ApiResponse(code = 401, message = "Attempted unauthorized access"),
-      @ApiResponse(code = 500, message = "Application failed to process the request")
+  @Operation(summary = "Selecting trainers", tags = {"Trainers"},
+      security = @SecurityRequirement(name = "bearerAuth"), responses = {
+      @ApiResponse(responseCode = "200", description = "List of trainers successfully returned",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = TrainerInfoDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "401", description = "Attempted unauthorized access",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = ErrorMessageDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "500", description = "Application failed to process the request")
   })
-  public List<TrainerInfoDto> selectTrainers(HttpServletRequest request) {
-    return loggerHelper.transactionalLogging(() -> {
-      log.info("REST call received - Endpoint: '{}', Method: {}",
-          request.getRequestURI(), request.getMethod());
-
-      jwtProcess.processToken(request);
-      List<TrainerInfoDto> trainerInfoDtos = trainerService.selectTrainers();
-
-      log.info("REST call completed - Endpoint: '{}', Method: {}, Status: {}",
-          request.getRequestURI(), request.getMethod(), HttpStatus.OK.value());
-      return trainerInfoDtos;
-    });
-  }
+  List<TrainerInfoDto> selectTrainers(HttpServletRequest request);
 
   @GetMapping("/{trainerUsername}")
-  @ApiOperation(
-      value = "Selecting trainer",
-      response = TrainerInfoDto.class,
-      authorizations = @Authorization(value = "bearer")
-  )
-  @ApiResponses(value = {
-      @ApiResponse(code = 200, message = "Trainer information successfully returned"),
-      @ApiResponse(code = 401, message = "Attempted unauthorized access"),
-      @ApiResponse(code = 404, message = "Trainer not found"),
-      @ApiResponse(code = 500, message = "Application failed to process the request")
+  @Operation(summary = "Selecting trainer", tags = {"Trainers"},
+      security = @SecurityRequirement(name = "bearerAuth"), responses = {
+      @ApiResponse(responseCode = "200", description = "Trainer information successfully returned",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              schema = @Schema(implementation = TrainerInfoDto.class)
+          )
+      ),
+      @ApiResponse(responseCode = "401", description = "Attempted unauthorized access",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = ErrorMessageDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "404", description = "Trainer not found",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = ErrorMessageDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "500", description = "Application failed to process the request")
   })
-  public TrainerInfoDto selectTrainer(
-      @PathVariable String trainerUsername,
-      HttpServletRequest request
-  ) {
-    return loggerHelper.transactionalLogging(() -> {
-      log.info("REST call received - Endpoint: '{}', Method: {}",
-          request.getRequestURI(), request.getMethod());
-
-      jwtProcess.processToken(request);
-      TrainerInfoDto trainerInfoDto = trainerService.selectTrainer(trainerUsername);
-
-      log.info("REST call completed - Endpoint: '{}', Method: {}, Status: {}",
-          request.getRequestURI(), request.getMethod(), HttpStatus.OK.value());
-      return trainerInfoDto;
-    });
-  }
+  TrainerInfoDto selectTrainer(@PathVariable String trainerUsername, HttpServletRequest request);
 
   @PutMapping
-  @ApiOperation(
-      value = "Updating trainer",
-      response = TraineeInfoDto.class,
-      authorizations = @Authorization(value = "bearer")
-  )
-  @ApiResponses(value = {
-      @ApiResponse(code = 200, message = "Trainer successfully updated"),
-      @ApiResponse(code = 400, message = "Specified wrong fields"),
-      @ApiResponse(code = 401, message = "Attempted unauthorized access"),
-      @ApiResponse(code = 404, message = "Trainer not found"),
-      @ApiResponse(code = 500, message = "Application failed to process the request")
+  @Operation(summary = "Updating trainer", tags = {"Trainers"},
+      security = @SecurityRequirement(name = "bearerAuth"), responses = {
+      @ApiResponse(responseCode = "200", description = "Trainer successfully updated",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              schema = @Schema(implementation = TrainerInfoDto.class)
+          )
+      ),
+      @ApiResponse(responseCode = "400", description = "Specified wrong fields",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = ErrorMessageDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "401", description = "Attempted unauthorized access",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = ErrorMessageDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "404", description = "Trainer not found",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = ErrorMessageDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "500", description = "Application failed to process the request")
   })
-  public TrainerInfoDto updateTrainer(
-      @RequestBody @Valid TrainerUpdateDto trainerUpdateDto,
-      HttpServletRequest request
-  ) {
-    return loggerHelper.transactionalLogging(() -> {
-      log.info("REST call received - Endpoint: '{}', Method: {}, Body: {}",
-          request.getRequestURI(), request.getMethod(), trainerUpdateDto);
-
-      jwtProcess.processToken(request);
-      TrainerInfoDto trainerInfoDto = trainerService.updateTrainer(trainerUpdateDto);
-
-      log.info("REST call completed - Endpoint: '{}', Method: {}, Status: {}",
-          request.getRequestURI(), request.getMethod(), HttpStatus.OK.value());
-      return trainerInfoDto;
-    });
-  }
+  TrainerInfoDto updateTrainer(@RequestBody @Valid TrainerUpdateDto trainerUpdateDto,
+      HttpServletRequest request);
 
   @GetMapping("/unassigned/{traineeUsername}")
-  @ApiOperation(
-      value = "Retrieving unassigned trainers on specified trainee",
-      authorizations = @Authorization(value = "bearer")
-  )
-  @ApiResponses(value = {
-      @ApiResponse(code = 200, message = "List of unassigned trainers successfully returned"),
-      @ApiResponse(code = 401, message = "Attempted unauthorized access"),
-      @ApiResponse(code = 500, message = "Application failed to process the request")
+  @Operation(summary = "Retrieving unassigned trainers on specified trainee", tags = {"Trainers"},
+      security = @SecurityRequirement(name = "bearerAuth"), responses = {
+      @ApiResponse(responseCode = "200", description = "List of unassigned trainers successfully returned",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = TrainerShortInfoDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "401", description = "Attempted unauthorized access",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = ErrorMessageDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "500", description = "Application failed to process the request")
   })
-  public List<TrainerShortInfoDto> getUnassignedTrainersOnTrainee(
-      @PathVariable String traineeUsername,
-      HttpServletRequest request
-  ) {
-    return loggerHelper.transactionalLogging(() -> {
-      log.info("REST call received - Endpoint: '{}', Method: {}",
-          request.getRequestURI(), request.getMethod());
-
-      jwtProcess.processToken(request);
-      List<TrainerShortInfoDto> unassignedTrainers = trainerService
-          .findUnassignedTrainers(traineeUsername);
-
-      log.info("REST call completed - Endpoint: '{}', Method: {}, Status: {}",
-          request.getRequestURI(), request.getMethod(), HttpStatus.OK.value());
-      return unassignedTrainers;
-    });
-  }
+  List<TrainerShortInfoDto> getUnassignedTrainersOnTrainee(@PathVariable String traineeUsername,
+      HttpServletRequest request);
 
   @GetMapping("/trainings")
-  @ApiOperation(
-      value = "Retrieving trainer's trainings",
-      authorizations = @Authorization(value = "bearer")
-  )
-  @ApiResponses(value = {
-      @ApiResponse(code = 200, message = "List of trainer's trainings successfully returned"),
-      @ApiResponse(code = 400, message = "Missing required parameters"),
-      @ApiResponse(code = 401, message = "Attempted unauthorized access"),
-      @ApiResponse(code = 500, message = "Application failed to process the request")
+  @Operation(summary = "Retrieving trainer's trainings", tags = {"Trainers"},
+      security = @SecurityRequirement(name = "bearerAuth"), responses = {
+      @ApiResponse(responseCode = "200", description = "List of trainer's trainings successfully returned",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = TrainingInfoDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "400", description = "Missing required parameters",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = ErrorMessageDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "401", description = "Attempted unauthorized access",
+          content = @Content(
+              mediaType = MediaType.APPLICATION_JSON_VALUE,
+              array = @ArraySchema(schema = @Schema(implementation = ErrorMessageDto.class))
+          )
+      ),
+      @ApiResponse(responseCode = "500", description = "Application failed to process the request")
   })
-  public List<TrainingInfoDto> getTrainerTrainings(
+  List<TrainingInfoDto> getTrainerTrainings(
       @RequestParam(name = "username") String trainerUsername,
       @RequestParam(name = "fromDate", required = false) String fromDate,
       @RequestParam(name = "toDate", required = false) String toDate,
       @RequestParam(name = "traineeName", required = false) String traineeName,
-      HttpServletRequest request
-  ) {
-    return loggerHelper.transactionalLogging(() -> {
-      Map<String, List<String>> params = ControllerUtils.getRequestParams(request);
-      log.info("REST call received - Endpoint: '{}', Method: {}, Parameters: {}",
-          request.getRequestURI(), request.getMethod(), params);
-
-      jwtProcess.processToken(request);
-
-      LocalDate parsedFromDate = ControllerUtils.parseStringToLocalDate(fromDate);
-      LocalDate parsedToDate = ControllerUtils.parseStringToLocalDate(toDate);
-
-      List<TrainingInfoDto> trainerTrainings = trainerService
-          .findTrainerTrainings(trainerUsername, parsedFromDate, parsedToDate, traineeName);
-
-      log.info("REST call completed - Endpoint: '{}', Method: {}, Parameters: {}, Status: {}",
-          request.getRequestURI(), request.getMethod(), params, HttpStatus.OK.value());
-      return trainerTrainings;
-    });
-  }
+      HttpServletRequest request);
 }

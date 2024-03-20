@@ -1,5 +1,11 @@
-FROM tomcat:9.0.86-jdk17
-RUN rm -rf /usr/local/tomcat/webapps/*
-COPY target/gym-app-*.war /usr/local/tomcat/webapps/gym-app.war
+FROM maven:3.9.6-eclipse-temurin-17 as build
+WORKDIR /app
+COPY pom.xml .
+COPY src/ src/
+RUN mvn -f pom.xml clean package -DskipTests
+
+FROM eclipse-temurin:17
+WORKDIR /app
+COPY --from=build /app/target/gym-app-*.jar gym-app.jar
 EXPOSE 8080:8080
-ENTRYPOINT ["catalina.sh", "run"]
+ENTRYPOINT ["java", "-jar", "gym-app.jar"]

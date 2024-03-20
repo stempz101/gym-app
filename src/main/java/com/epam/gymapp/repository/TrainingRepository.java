@@ -1,179 +1,61 @@
 package com.epam.gymapp.repository;
 
-import com.epam.gymapp.model.Trainee;
-import com.epam.gymapp.model.Trainer;
 import com.epam.gymapp.model.Training;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Expression;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
-import org.hibernate.SessionFactory;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.CrudRepository;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class TrainingRepository extends AbstractHibernateRepository
-    implements GeneralRepository<Long, Training> {
-
-  public TrainingRepository(SessionFactory sessionFactory) {
-    super(sessionFactory);
-  }
+public interface TrainingRepository extends CrudRepository<Training, Long> {
 
   @Override
-  public Training save(Training training) {
-    return executeTransactionalOperation(session -> {
-      Trainee trainee = session.merge(training.getTrainee());
-      Trainer trainer = session.merge(training.getTrainer());
-      training.setTrainee(trainee);
-      training.setTrainer(trainer);
+  @NonNull
+  @Query("""
+      select t from Training t
+      join fetch t.trainee trainee
+      join fetch trainee.user
+      join fetch t.trainer trainer
+      join fetch trainer.user
+      join fetch t.type
+      """)
+  List<Training> findAll();
 
-      session.persist(training);
-      return training;
-    });
-  }
+  @Query("""
+      select t from Training t
+      join fetch t.trainee trainee
+      join fetch trainee.user trainee_user
+      join fetch t.trainer trainer
+      join fetch trainer.user trainer_user
+      join fetch t.type type
+      where trainee_user.username = :username
+      and (t.date >= cast(:fromDate as date) or cast(:fromDate as date) is null)
+      and (t.date <= cast(:toDate as date) or cast(:toDate as date) is null)
+      and (lower(concat(trainer_user.firstName, ' ', trainer_user.lastName)) like lower(concat(:trainerName, '%')) or :trainerName is null)
+      and (type.name = :trainingType or :trainingType is null)
+      """)
+  List<Training> findAllByTraineeUsernameAndParams(String username, LocalDate fromDate,
+      LocalDate toDate, String trainerName, String trainingType);
 
-  @Override
-  public List<Training> findAll() {
-    return executeOperation(session -> session
-        .createQuery("""
-              from Training t
-              join fetch t.trainee trainee
-              join fetch trainee.user
-              join fetch t.trainer trainer
-              join fetch trainer.user
-              join fetch t.type
-              """, Training.class)
-        .setReadOnly(true)
-        .list());
-  }
+  @Query("""
+      select t from Training t
+      join fetch t.trainee trainee
+      join fetch trainee.user trainee_user
+      join fetch t.trainer trainer
+      join fetch trainer.user trainer_user
+      join fetch t.type type
+      where trainer_user.username = :username
+      and (t.date >= cast(:fromDate as date) or cast(:fromDate as date) is null)
+      and (t.date <= cast(:toDate as date) or cast(:toDate as date) is null)
+      and (lower(concat(trainee_user.firstName, ' ', trainee_user.lastName)) like lower(concat(:traineeName, '%')) or :traineeName is null)
+      """)
+  List<Training> findAllByTrainerUsernameAndParams(String username, LocalDate fromDate,
+      LocalDate toDate, String traineeName);
 
-  public List<Training> findAllByTraineeUsernameAndParams(String username, LocalDate fromDate,
-      LocalDate toDate, String trainerName, String trainingType) {
-    return executeOperation(session -> {
-      session.setDefaultReadOnly(true);
+  @Query("select count(t) from Training t where t.date >= :currentDate")
+  long countOfUpcomingTrainings(LocalDate currentDate);
 
-      CriteriaBuilder builder = session.getCriteriaBuilder();
-      CriteriaQuery<Training> query = builder.createQuery(Training.class);
-      Root<Training> root = query.from(Training.class);
-
-      root.fetch("trainee", JoinType.INNER).fetch("user", JoinType.INNER);
-      root.fetch("trainer", JoinType.INNER).fetch("user", JoinType.INNER);
-      root.fetch("type", JoinType.INNER);
-
-      Predicate predicate = builder.equal(root.get("trainee").get("user").get("username"),
-          username);
-
-      if (fromDate != null) {
-        predicate = builder.and(predicate,
-            builder.greaterThanOrEqualTo(root.get("date"), fromDate));
-      }
-      if (toDate != null) {
-        predicate = builder.and(predicate, builder.lessThanOrEqualTo(root.get("date"), toDate));
-      }
-      if (trainerName != null) {
-        Expression<String> fullNameExpression = builder.concat(
-            root.get("trainer").get("user").get("firstName"), " ");
-        fullNameExpression = builder.concat(
-            fullNameExpression, root.get("trainer").get("user").get("lastName"));
-        Expression<String> fullNameLowerCase = builder.lower(fullNameExpression);
-        Expression<String> trainerNameLowerCase = builder.lower(builder.literal(trainerName + "%"));
-        predicate = builder.and(predicate, builder.like(fullNameLowerCase, trainerNameLowerCase));
-      }
-      if (trainingType != null) {
-        predicate = builder.and(predicate,
-            builder.equal(root.get("type").get("name"), trainingType));
-      }
-
-      query.select(root).where(predicate);
-
-      return session.createQuery(query).getResultList();
-    });
-  }
-
-  public List<Training> findAllByTrainerUsernameAndParams(String username, LocalDate fromDate,
-      LocalDate toDate, String traineeName) {
-    return executeOperation(session -> {
-      session.setDefaultReadOnly(true);
-
-      CriteriaBuilder builder = session.getCriteriaBuilder();
-      CriteriaQuery<Training> query = builder.createQuery(Training.class);
-      Root<Training> root = query.from(Training.class);
-
-      root.fetch("trainee", JoinType.INNER).fetch("user", JoinType.INNER);
-      root.fetch("trainer", JoinType.INNER).fetch("user", JoinType.INNER);
-      root.fetch("type", JoinType.INNER);
-
-      Predicate predicate = builder.equal(root.get("trainer").get("user").get("username"),
-          username);
-
-      if (fromDate != null) {
-        predicate = builder.and(predicate,
-            builder.greaterThanOrEqualTo(root.get("date"), fromDate));
-      }
-      if (toDate != null) {
-        predicate = builder.and(predicate, builder.lessThanOrEqualTo(root.get("date"), toDate));
-      }
-      if (traineeName != null) {
-        Expression<String> fullNameExpression = builder.concat(
-            root.get("trainee").get("user").get("firstName"), " ");
-        fullNameExpression = builder.concat(
-            fullNameExpression, root.get("trainee").get("user").get("lastName"));
-        Expression<String> fullNameLowerCase = builder.lower(fullNameExpression);
-        Expression<String> traineeNameLowerCase = builder.lower(builder.literal(traineeName + "%"));
-        predicate = builder.and(predicate, builder.like(fullNameLowerCase, traineeNameLowerCase));
-      }
-
-      query.select(root).where(predicate);
-
-      return session.createQuery(query).getResultList();
-    });
-  }
-
-  @Override
-  public Optional<Training> findById(Long id) {
-    return executeOperation(session -> session
-        .createQuery("""
-              from Training t
-              join fetch t.trainee trainee
-              join fetch trainee.user
-              join fetch t.trainer trainer
-              join fetch trainer.user
-              join fetch t.type
-              where t.id=:id
-              """, Training.class)
-        .setParameter("id", id)
-        .setReadOnly(true)
-        .uniqueResultOptional());
-  }
-
-  @Override
-  public Training update(Training training) {
-    return executeTransactionalOperation(session -> {
-      Training updatedTraining = session.merge(training);
-      return session.createQuery("""
-                from Training t
-                join fetch t.trainee trainee
-                join fetch trainee.user
-                join fetch t.trainer trainer
-                join fetch trainer.user
-                join fetch t.type
-                where t.id=:id
-                """, Training.class)
-          .setParameter("id", updatedTraining.getId())
-          .setReadOnly(true)
-          .uniqueResult();
-    });
-  }
-
-  @Override
-  public void delete(Training training) {
-    executeOperation(session -> {
-      session.remove(training);
-      return null;
-    });
-  }
+  void deleteByTraineeId(Long traineeId);
 }

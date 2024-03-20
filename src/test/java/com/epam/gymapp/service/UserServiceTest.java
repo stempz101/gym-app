@@ -46,12 +46,12 @@ public class UserServiceTest {
     JwtDto expectedResult = UserTestUtil.getUserJwtDto(token);
 
     // When
-    when(userRepository.findByUsername(any())).thenReturn(Optional.of(user));
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(user));
     when(jwtService.generateToken(any())).thenReturn(token);
 
     JwtDto result = userService.authenticate(userCredentialsDto);
 
-    verify(userRepository, times(1)).findByUsername(any());
+    verify(userRepository, times(1)).findByUsernameIgnoreCase(any());
     verify(jwtService, times(1)).generateToken(any());
 
     assertThat(result, samePropertyValuesAs(expectedResult));
@@ -63,7 +63,7 @@ public class UserServiceTest {
     UserCredentialsDto userCredentialsDto = UserTestUtil.getTraineeUserCredentialsDto1();
 
     // When
-    when(userRepository.findByUsername(any())).thenReturn(Optional.empty());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.empty());
 
     // Then
     assertThrows(BadCredentialsException.class, () -> userService.authenticate(userCredentialsDto));
@@ -77,7 +77,7 @@ public class UserServiceTest {
     User user = UserTestUtil.getTraineeUser1();
 
     // When
-    when(userRepository.findByUsername(any())).thenReturn(Optional.of(user));
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(user));
 
     // Then
     assertThrows(BadCredentialsException.class, () -> userService.authenticate(userCredentialsDto));
@@ -92,14 +92,14 @@ public class UserServiceTest {
     updatedUser.setPassword(UserTestUtil.TEST_TRAINEE_USER_NEW_PASSWORD_1);
 
     // When
-    when(userRepository.findByUsername(any())).thenReturn(Optional.of(oldUser));
-    when(userRepository.update(any())).thenReturn(updatedUser);
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(oldUser));
+    when(userRepository.save(any())).thenReturn(updatedUser);
 
     userService.changePassword(changePasswordDto);
 
     // Then
-    verify(userRepository, times(1)).findByUsername(any());
-    verify(userRepository, times(1)).update(any());
+    verify(userRepository, times(1)).findByUsernameIgnoreCase(any());
+    verify(userRepository, times(1)).save(any());
   }
 
   @Test
@@ -108,7 +108,7 @@ public class UserServiceTest {
     ChangePasswordDto changePasswordDto = UserTestUtil.getChangePasswordDto1();
 
     // When
-    when(userRepository.findByUsername(any())).thenReturn(Optional.empty());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.empty());
 
     // Then
     assertThrows(BadCredentialsException.class,
@@ -123,7 +123,7 @@ public class UserServiceTest {
     User oldUser = UserTestUtil.getTraineeUser1();
 
     // When
-    when(userRepository.findByUsername(any())).thenReturn(Optional.of(oldUser));
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(oldUser));
 
     // Then
     assertThrows(BadCredentialsException.class,
@@ -139,14 +139,14 @@ public class UserServiceTest {
     updatedUser.setActive(true);
 
     // When
-    when(userRepository.findByUsername(any())).thenReturn(Optional.of(oldUser));
-    when(userRepository.update(any())).thenReturn(updatedUser);
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(oldUser));
+    when(userRepository.save(any())).thenReturn(updatedUser);
 
     userService.changeActivationStatus(userActivation);
 
     // Then
-    verify(userRepository, times(1)).findByUsername(any());
-    verify(userRepository, times(1)).update(any());
+    verify(userRepository, times(1)).findByUsernameIgnoreCase(any());
+    verify(userRepository, times(1)).save(any());
   }
 
   @Test
@@ -158,14 +158,14 @@ public class UserServiceTest {
     updatedUser.setActive(false);
 
     // When
-    when(userRepository.findByUsername(any())).thenReturn(Optional.of(oldUser));
-    when(userRepository.update(any())).thenReturn(updatedUser);
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(oldUser));
+    when(userRepository.save(any())).thenReturn(updatedUser);
 
     userService.changeActivationStatus(userActivation);
 
     // Then
-    verify(userRepository, times(1)).findByUsername(any());
-    verify(userRepository, times(1)).update(any());
+    verify(userRepository, times(1)).findByUsernameIgnoreCase(any());
+    verify(userRepository, times(1)).save(any());
   }
 
   @Test
@@ -174,7 +174,7 @@ public class UserServiceTest {
     UserActivateDto userActivation = UserTestUtil.getUserActivation1();
 
     // When
-    when(userRepository.findByUsername(any())).thenReturn(Optional.empty());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.empty());
 
     // Then
     assertThrows(UserNotFoundException.class,

@@ -1,7 +1,7 @@
 package com.epam.gymapp.dto;
 
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,9 +13,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UserActivateDto {
 
-  @NotBlank(message = "Username must be specified")
+  @NotBlank(message = "{validation.user.not-blank.username}")
   private String username;
 
-  @NotNull(message = "Activation status must be specified")
+  @NotNull(message = "{validation.user.not-null.is-active}")
   private Boolean isActive;
 }

@@ -1,9 +1,9 @@
 package com.epam.gymapp.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.util.List;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,10 +15,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TraineeTrainersUpdateDto {
 
-  @NotBlank(message = "Trainee's username must be specified")
+  @NotBlank(message = "{validation.trainee.not-blank.username}")
   private String traineeUsername;
 
-  @NotNull(message = "Trainers list must be filled")
-  @Size(min = 1, message = "At least one trainer must be specified in list")
-  private List<@NotBlank(message = "Trainer's username must be specified in list") String> trainerUsernames;
+  @NotNull(message = "{validation.trainee.not-null.trainers}")
+  @Size(min = 1, message = "{validation.trainee.size.trainers}")
+  private List<@NotBlank(message = "{validation.trainee.not-blank.trainers.username}") String> trainerUsernames;
 }

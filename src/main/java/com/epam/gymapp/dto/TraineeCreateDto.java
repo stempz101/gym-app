@@ -1,7 +1,7 @@
 package com.epam.gymapp.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDate;
-import javax.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,10 +13,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class TraineeCreateDto {
 
-  @NotBlank(message = "Trainee's first name must be specified")
+  @NotBlank(message = "{validation.trainee.not-blank.first-name}")
   private String firstName;
 
-  @NotBlank(message = "Trainee's last name must be specified")
+  @NotBlank(message = "{validation.trainee.not-blank.last-name}")
   private String lastName;
 
   private LocalDate dateOfBirth;

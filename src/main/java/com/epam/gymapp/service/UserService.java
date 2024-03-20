@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -35,18 +36,20 @@ public class UserService {
     return new JwtDto(token);
   }
 
+  @Transactional
   public void changePassword(ChangePasswordDto changePasswordDto) {
     log.info("Changing User's (username={}) password", changePasswordDto.getUsername());
 
     User user = checkCredentials(changePasswordDto.getUsername(), changePasswordDto.getOldPassword());
     user.setPassword(changePasswordDto.getNewPassword());
 
-    userRepository.update(user);
+    userRepository.save(user);
 
     log.info("User's (username={}) password was changed successfully",
         changePasswordDto.getUsername());
   }
 
+  @Transactional
   public void changeActivationStatus(UserActivateDto userActivateDto) {
     if (userActivateDto.getIsActive()) {
       log.info("Activating User: {}", userActivateDto.getUsername());
@@ -54,11 +57,11 @@ public class UserService {
       log.info("Deactivating User: {}", userActivateDto.getUsername());
     }
 
-    User user = userRepository.findByUsername(userActivateDto.getUsername())
+    User user = userRepository.findByUsernameIgnoreCase(userActivateDto.getUsername())
         .orElseThrow(() -> new UserNotFoundException(userActivateDto.getUsername()));
 
     user.setActive(userActivateDto.getIsActive());
-    user = userRepository.update(user);
+    user = userRepository.save(user);
 
     if (user.isActive()) {
       log.info("User activated successfully: {}", userActivateDto.getUsername());
@@ -68,11 +71,12 @@ public class UserService {
   }
 
   public Optional<User> getUserByUsername(String username) {
-    return userRepository.findByUsername(username);
+    return userRepository.findByUsernameIgnoreCase(username);
   }
 
   private User checkCredentials(String username, char[] password) {
-    User user = userRepository.findByUsername(username).orElseThrow(BadCredentialsException::new);
+    User user = userRepository.findByUsernameIgnoreCase(username)
+        .orElseThrow(BadCredentialsException::new);
 
     if (!Arrays.equals(password, user.getPassword())) {
       throw new BadCredentialsException();

@@ -11,11 +11,16 @@ import com.epam.gymapp.model.Training;
 import com.epam.gymapp.repository.TraineeRepository;
 import com.epam.gymapp.repository.TrainerRepository;
 import com.epam.gymapp.repository.TrainingRepository;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +34,17 @@ public class TrainingService {
 
   private final TrainingMapper trainingMapper;
 
+  private final MeterRegistry meterRegistry;
+
+  @PostConstruct
+  public void setUp() {
+    Gauge.builder("gymapp_upcoming_trainings",
+        () -> trainingRepository.countOfUpcomingTrainings(LocalDate.now()))
+        .description("Number of upcoming trainings")
+        .register(meterRegistry);
+  }
+
+  @Transactional
   public void addTraining(TrainingCreateDto trainingCreateDto) {
     log.info("Creating Training: {}", trainingCreateDto);
 
@@ -47,6 +63,7 @@ public class TrainingService {
     log.info("Training added successfully: {}", training);
   }
 
+  @Transactional(readOnly = true)
   public List<TrainingInfoDto> selectTrainings() {
     log.info("Selecting all Trainings");
 

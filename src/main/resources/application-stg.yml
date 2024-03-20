@@ -1,0 +1,14 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+management:
+  endpoint:
+    health:
+      show-details: NEVER
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health

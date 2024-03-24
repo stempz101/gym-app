@@ -4,6 +4,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.samePropertyValuesAs;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,18 +13,25 @@ import com.epam.gymapp.dto.ChangePasswordDto;
 import com.epam.gymapp.dto.JwtDto;
 import com.epam.gymapp.dto.UserActivateDto;
 import com.epam.gymapp.dto.UserCredentialsDto;
-import com.epam.gymapp.exception.BadCredentialsException;
 import com.epam.gymapp.exception.UserNotFoundException;
-import com.epam.gymapp.jwt.JwtService;
+import com.epam.gymapp.model.JwtToken;
 import com.epam.gymapp.model.User;
+import com.epam.gymapp.repository.JwtTokenRepository;
 import com.epam.gymapp.repository.UserRepository;
+import com.epam.gymapp.test.utils.JwtTokenTestUtil;
 import com.epam.gymapp.test.utils.UserTestUtil;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 public class UserServiceTest {
@@ -35,52 +43,88 @@ public class UserServiceTest {
   private UserRepository userRepository;
 
   @Mock
+  private JwtTokenRepository jwtTokenRepository;
+
+  @Mock
   private JwtService jwtService;
+
+  @Mock
+  private AuthenticationManager authenticationManager;
+
+  @Mock
+  private PasswordEncoder passwordEncoder;
 
   @Test
   void authenticate_Success() {
     // Given
+    Authentication authentication = mock(Authentication.class);
     UserCredentialsDto userCredentialsDto = UserTestUtil.getTraineeUserCredentialsDto1();
     User user = UserTestUtil.getTraineeUser1();
-    String token = UserTestUtil.getUserToken();
-    JwtDto expectedResult = UserTestUtil.getUserJwtDto(token);
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
+    List<JwtToken> jwtList = List.of(
+        jwt,
+        JwtTokenTestUtil.getNewJwtTokenOfTrainee1(),
+        JwtTokenTestUtil.getNewJwtTokenOfTrainee1()
+    );
+    JwtDto expectedResult = UserTestUtil.getUserJwtDto(jwt.getToken());
 
     // When
-    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(user));
-    when(jwtService.generateToken(any())).thenReturn(token);
+    when(authenticationManager.authenticate(any())).thenReturn(authentication);
+    when(authentication.getPrincipal()).thenReturn(user);
+    when(jwtService.generateToken(any())).thenReturn(jwt.getToken());
+    when(jwtTokenRepository.findAllValidTokensByUserId(any())).thenReturn(jwtList);
+    when(jwtTokenRepository.saveAll(any())).thenReturn(jwtList);
+    when(jwtTokenRepository.save(any())).thenReturn(jwt);
 
     JwtDto result = userService.authenticate(userCredentialsDto);
 
-    verify(userRepository, times(1)).findByUsernameIgnoreCase(any());
+    verify(authenticationManager, times(1)).authenticate(any());
+    verify(authentication, times(1)).getPrincipal();
     verify(jwtService, times(1)).generateToken(any());
+    verify(jwtTokenRepository, times(1)).findAllValidTokensByUserId(any());
+    verify(jwtTokenRepository, times(1)).saveAll(any());
+    verify(jwtTokenRepository, times(1)).save(any());
 
     assertThat(result, samePropertyValuesAs(expectedResult));
   }
 
   @Test
-  void authenticate_UserNotFound_Failure() {
+  void authenticate_BadCredentials_Failure() {
     // Given
     UserCredentialsDto userCredentialsDto = UserTestUtil.getTraineeUserCredentialsDto1();
 
     // When
-    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.empty());
+    when(authenticationManager.authenticate(any())).thenThrow(BadCredentialsException.class);
 
     // Then
     assertThrows(BadCredentialsException.class, () -> userService.authenticate(userCredentialsDto));
   }
 
   @Test
-  void authenticate_PasswordNotEqual_Failure() {
+  void authenticate_NoPreviousJwtTokens_Success() {
     // Given
+    Authentication authentication = mock(Authentication.class);
     UserCredentialsDto userCredentialsDto = UserTestUtil.getTraineeUserCredentialsDto1();
-    userCredentialsDto.setPassword("uTlAHAgZg2".toCharArray());
     User user = UserTestUtil.getTraineeUser1();
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
+    JwtDto expectedResult = UserTestUtil.getUserJwtDto(jwt.getToken());
 
     // When
-    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(user));
+    when(authenticationManager.authenticate(any())).thenReturn(authentication);
+    when(authentication.getPrincipal()).thenReturn(user);
+    when(jwtService.generateToken(any())).thenReturn(jwt.getToken());
+    when(jwtTokenRepository.findAllValidTokensByUserId(any())).thenReturn(Collections.emptyList());
+    when(jwtTokenRepository.save(any())).thenReturn(jwt);
 
-    // Then
-    assertThrows(BadCredentialsException.class, () -> userService.authenticate(userCredentialsDto));
+    JwtDto result = userService.authenticate(userCredentialsDto);
+
+    verify(authenticationManager, times(1)).authenticate(any());
+    verify(authentication, times(1)).getPrincipal();
+    verify(jwtService, times(1)).generateToken(any());
+    verify(jwtTokenRepository, times(1)).findAllValidTokensByUserId(any());
+    verify(jwtTokenRepository, times(1)).save(any());
+
+    assertThat(result, samePropertyValuesAs(expectedResult));
   }
 
   @Test
@@ -89,16 +133,20 @@ public class UserServiceTest {
     ChangePasswordDto changePasswordDto = UserTestUtil.getChangePasswordDto1();
     User oldUser = UserTestUtil.getTraineeUser1();
     User updatedUser = UserTestUtil.getTraineeUser1();
-    updatedUser.setPassword(UserTestUtil.TEST_TRAINEE_USER_NEW_PASSWORD_1);
+    updatedUser.setPassword(UserTestUtil.TEST_TRAINEE_USER_PASSWORD_1);
 
     // When
     when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(oldUser));
+    when(passwordEncoder.matches(any(), any())).thenReturn(true);
+    when(passwordEncoder.encode(any())).thenReturn(updatedUser.getPassword());
     when(userRepository.save(any())).thenReturn(updatedUser);
 
     userService.changePassword(changePasswordDto);
 
     // Then
     verify(userRepository, times(1)).findByUsernameIgnoreCase(any());
+    verify(passwordEncoder, times(1)).matches(any(), any());
+    verify(passwordEncoder, times(1)).encode(any());
     verify(userRepository, times(1)).save(any());
   }
 
@@ -111,8 +159,7 @@ public class UserServiceTest {
     when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.empty());
 
     // Then
-    assertThrows(BadCredentialsException.class,
-        () -> userService.changePassword(changePasswordDto));
+    assertThrows(BadCredentialsException.class, () -> userService.changePassword(changePasswordDto));
   }
 
   @Test
@@ -124,10 +171,10 @@ public class UserServiceTest {
 
     // When
     when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(oldUser));
+    when(passwordEncoder.matches(any(), any())).thenReturn(false);
 
     // Then
-    assertThrows(BadCredentialsException.class,
-        () -> userService.changePassword(changePasswordDto));
+    assertThrows(BadCredentialsException.class, () -> userService.changePassword(changePasswordDto));
   }
 
   @Test

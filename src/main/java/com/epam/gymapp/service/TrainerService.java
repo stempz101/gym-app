@@ -21,6 +21,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +39,9 @@ public class TrainerService {
   private final TrainerMapper trainerMapper;
   private final TrainingMapper trainingMapper;
 
+  private final PasswordEncoder passwordEncoder;
+  private final JwtService jwtService;
+
   @Transactional
   public UserCredentialsDto createTrainer(TrainerCreateDto trainerCreateDto) {
     log.info("Creating Trainer: {}", trainerCreateDto);
@@ -50,13 +54,15 @@ public class TrainerService {
     int numOfAppearances = UserUtils.getNumberOfAppearances(users);
 
     trainerUser.setUsername(UserUtils.buildUsername(trainerUser, numOfAppearances));
-    trainerUser.setPassword(UserUtils.generatePassword());
+    char[] password = UserUtils.generatePassword();
+    trainerUser.setPassword(passwordEncoder.encode(String.valueOf(password)));
 
     setSpecializationIfExists(trainer);
 
     trainer = trainerRepository.save(trainer);
+    String token = jwtService.generateAndSaveToken(trainer.getUser());
 
-    return trainerMapper.toUserCredentialsDto(trainer);
+    return new UserCredentialsDto(trainer.getUser().getUsername(), password, token);
   }
 
   @Transactional(readOnly = true)

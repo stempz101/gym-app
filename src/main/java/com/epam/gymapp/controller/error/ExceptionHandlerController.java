@@ -1,18 +1,22 @@
 package com.epam.gymapp.controller.error;
 
 import com.epam.gymapp.dto.ErrorMessageDto;
-import com.epam.gymapp.exception.BadCredentialsException;
+import com.epam.gymapp.exception.AuthenticationBlockedException;
 import com.epam.gymapp.exception.ParsingException;
 import com.epam.gymapp.exception.TraineeNotFoundException;
 import com.epam.gymapp.exception.TrainerNotFoundException;
-import com.epam.gymapp.exception.UnauthorizedException;
 import com.epam.gymapp.exception.UserNotFoundException;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.swagger.v3.oas.annotations.Hidden;
 import java.util.Collections;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -47,7 +51,10 @@ public class ExceptionHandlerController {
   }
 
   @Hidden
-  @ExceptionHandler(UnauthorizedException.class)
+  @ExceptionHandler({
+      AuthenticationException.class,
+      ExpiredJwtException.class
+  })
   @ResponseStatus(HttpStatus.UNAUTHORIZED)
   public List<ErrorMessageDto> handleUnauthorizedException(Exception ex) {
     log.error("handleUnauthorizedException: {}", ex.getMessage(), ex);
@@ -64,6 +71,19 @@ public class ExceptionHandlerController {
   public List<ErrorMessageDto> handleNotFoundException(Exception ex) {
     log.error("handleNotFoundException: {}", ex.getMessage(), ex);
     return Collections.singletonList(new ErrorMessageDto(ex.getMessage()));
+  }
+
+  @Hidden
+  @ExceptionHandler(InternalAuthenticationServiceException.class)
+  public ResponseEntity<List<ErrorMessageDto>> handleInternalAuthenticationServiceException(Exception ex) {
+    log.error("handleAuthenticationBlockedException: {}", ex.getMessage(), ex);
+
+    if (ex.getCause() instanceof AuthenticationBlockedException) {
+      return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+          .body(Collections.singletonList(new ErrorMessageDto(ex.getMessage())));
+    }
+
+    return ResponseEntity.internalServerError().build();
   }
 
   @ExceptionHandler(Exception.class)

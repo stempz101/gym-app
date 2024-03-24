@@ -19,3 +19,5 @@ management:
 application:
   security:
     secret-key: 6u21QAFzzxbE4v9y8cVyE73vTnHgdb0jn3APHdwJESJaY8nQxNYFaSejvXiU
+  front-end:
+    host: "${FRONTEND_HOST:}"

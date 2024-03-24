@@ -6,13 +6,16 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Objects;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 @Entity
 @Table(name = "_user")
@@ -21,7 +24,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class User {
+public class User implements UserDetails {
 
   @Id
   @GeneratedValue(strategy = GenerationType.AUTO)
@@ -37,10 +40,35 @@ public class User {
   private String username;
 
   @Column(name = "password", nullable = false)
-  private char[] password;
+  private String password;
 
   @Column(name = "is_active", nullable = false)
   private boolean isActive;
+
+  @Override
+  public Collection<? extends GrantedAuthority> getAuthorities() {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public boolean isAccountNonExpired() {
+    return true;
+  }
+
+  @Override
+  public boolean isAccountNonLocked() {
+    return true;
+  }
+
+  @Override
+  public boolean isCredentialsNonExpired() {
+    return true;
+  }
+
+  @Override
+  public boolean isEnabled() {
+    return true;
+  }
 
   @Override
   public boolean equals(Object object) {
@@ -54,14 +82,12 @@ public class User {
     return isActive == user.isActive && Objects.equals(id, user.id)
         && Objects.equals(firstName, user.firstName) && Objects.equals(lastName,
         user.lastName) && Objects.equals(username, user.username)
-        && Arrays.equals(password, user.password);
+        && Objects.equals(password, user.password);
   }
 
   @Override
   public int hashCode() {
-    int result = Objects.hash(id, firstName, lastName, username, isActive);
-    result = 31 * result + Arrays.hashCode(password);
-    return result;
+    return Objects.hash(id, firstName, lastName, username, password, isActive);
   }
 
   @Override

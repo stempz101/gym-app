@@ -5,7 +5,6 @@ import com.epam.gymapp.dto.TrainerCreateDto;
 import com.epam.gymapp.dto.TrainerInfoDto;
 import com.epam.gymapp.dto.TrainerShortInfoDto;
 import com.epam.gymapp.dto.TrainerUpdateDto;
-import com.epam.gymapp.dto.UserCredentialsDto;
 import com.epam.gymapp.model.Trainee;
 import com.epam.gymapp.model.Trainer;
 import org.mapstruct.BeanMapping;
@@ -25,11 +24,6 @@ public interface TrainerMapper {
   @Mapping(source = "lastName", target = "user.lastName")
   @Mapping(source = "specialization", target = "specialization.name")
   Trainer toTrainer(TrainerCreateDto trainerCreateDto);
-
-  @BeanMapping(ignoreByDefault = true)
-  @Mapping(source = "user.username", target = "username")
-  @Mapping(source = "user.password", target = "password")
-  UserCredentialsDto toUserCredentialsDto(Trainer trainer);
 
   @BeanMapping(ignoreByDefault = true)
   @Mapping(source = "user.firstName", target = "firstName")

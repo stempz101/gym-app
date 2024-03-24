@@ -44,6 +44,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 public class TrainerServiceTest {
@@ -69,6 +70,12 @@ public class TrainerServiceTest {
   @Mock
   private TrainingMapper trainingMapper;
 
+  @Mock
+  private PasswordEncoder passwordEncoder;
+
+  @Mock
+  private JwtService jwtService;
+
   @Test
   void createTrainer_Success() {
     // Given
@@ -87,10 +94,11 @@ public class TrainerServiceTest {
       userUtils.when(() -> UserUtils.buildUsername(any(), anyInt()))
           .thenReturn(createdTrainer.getUser().getUsername());
       userUtils.when(UserUtils::generatePassword)
-          .thenReturn(createdTrainer.getUser().getPassword());
+          .thenReturn(createdTrainer.getUser().getPassword().toCharArray());
+      when(passwordEncoder.encode(any())).thenReturn(createdTrainer.getUser().getPassword());
       when(trainingTypeRepository.findByName(any())).thenReturn(Optional.of(trainingType));
       when(trainerRepository.save(any())).thenReturn(createdTrainer);
-      when(trainerMapper.toUserCredentialsDto(any())).thenReturn(expectedResult);
+      when(jwtService.generateAndSaveToken(any())).thenReturn(expectedResult.getToken());
 
       UserCredentialsDto result = trainerService.createTrainer(trainerCreateDto);
 
@@ -100,9 +108,10 @@ public class TrainerServiceTest {
       userUtils.verify(() -> UserUtils.getNumberOfAppearances(any()), times(1));
       userUtils.verify(() -> UserUtils.buildUsername(any(), anyInt()), times(1));
       userUtils.verify(UserUtils::generatePassword, times(1));
+      verify(passwordEncoder, times(1)).encode(any());
       verify(trainingTypeRepository, times(1)).findByName(any());
       verify(trainerRepository, times(1)).save(any());
-      verify(trainerMapper, times(1)).toUserCredentialsDto(any());
+      verify(jwtService, times(1)).generateAndSaveToken(any());
 
       assertThat(result, samePropertyValuesAs(expectedResult));
     }

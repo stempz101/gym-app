@@ -9,27 +9,26 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.epam.gymapp.dto.TraineeCreateDto;
+import com.epam.gymapp.config.TestSecurityConfiguration;
 import com.epam.gymapp.dto.TraineeInfoDto;
 import com.epam.gymapp.dto.TraineeTrainersUpdateDto;
 import com.epam.gymapp.dto.TraineeUpdateDto;
 import com.epam.gymapp.dto.TrainerShortInfoDto;
 import com.epam.gymapp.dto.TrainingInfoDto;
-import com.epam.gymapp.dto.UserCredentialsDto;
 import com.epam.gymapp.exception.TraineeNotFoundException;
 import com.epam.gymapp.exception.TrainerNotFoundException;
-import com.epam.gymapp.exception.UnauthorizedException;
-import com.epam.gymapp.jwt.JwtProcess;
+import com.epam.gymapp.model.JwtToken;
+import com.epam.gymapp.repository.JwtTokenRepository;
+import com.epam.gymapp.repository.UserRepository;
 import com.epam.gymapp.service.LoggingService;
 import com.epam.gymapp.service.TraineeService;
-import com.epam.gymapp.test.utils.JwtUtil;
+import com.epam.gymapp.test.utils.JwtTokenTestUtil;
 import com.epam.gymapp.test.utils.TraineeTestUtil;
 import com.epam.gymapp.test.utils.TrainingTestUtil;
 import com.epam.gymapp.test.utils.TrainingTypeTestUtil;
@@ -39,6 +38,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,22 +47,27 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 @ExtendWith(SpringExtension.class)
 @WebMvcTest(value = TraineeControllerImpl.class)
+@ContextConfiguration(classes = TestSecurityConfiguration.class)
 public class TraineeControllerImplTest {
 
   @MockBean
   private TraineeService traineeService;
 
-  @MockBean
-  private JwtProcess jwtProcess;
-
   @SpyBean
   private LoggingService loggingService;
+
+  @MockBean
+  private UserRepository userRepository;
+
+  @MockBean
+  private JwtTokenRepository jwtTokenRepository;
 
   @Autowired
   private MockMvc mockMvc;
@@ -71,218 +76,17 @@ public class TraineeControllerImplTest {
   private ObjectMapper objectMapper;
 
   @Test
-  void createTrainee_Success() throws Exception {
-    // Given
-    TraineeCreateDto traineeCreateDto = TraineeTestUtil.getTraineeCreateDto1();
-    UserCredentialsDto expectedResult = UserTestUtil.getTraineeUserCredentialsDto1();
-
-    // When
-    when(traineeService.createTrainee(any())).thenReturn(expectedResult);
-
-    ResultActions result = mockMvc.perform(post("/api/trainees")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(traineeCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isCreated(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$.username").value(expectedResult.getUsername()),
-            jsonPath("$.password").value(String.valueOf(expectedResult.getPassword()))
-        );
-  }
-
-  @Test
-  void createTrainee_FirstNameIsNull_Failure() throws Exception {
-    // Given
-    TraineeCreateDto traineeCreateDto = TraineeTestUtil.getTraineeCreateDto1();
-    traineeCreateDto.setFirstName(null);
-
-    // When
-    ResultActions result = mockMvc.perform(post("/api/trainees")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(traineeCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Trainee's first name must be specified")
-        );
-  }
-
-  @Test
-  void createTrainee_FirstNameIsEmpty_Failure() throws Exception {
-    // Given
-    TraineeCreateDto traineeCreateDto = TraineeTestUtil.getTraineeCreateDto1();
-    traineeCreateDto.setFirstName("");
-
-    // When
-    ResultActions result = mockMvc.perform(post("/api/trainees")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(traineeCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Trainee's first name must be specified")
-        );
-  }
-
-  @Test
-  void createTrainee_FirstNameIsBlank_Failure() throws Exception {
-    // Given
-    TraineeCreateDto traineeCreateDto = TraineeTestUtil.getTraineeCreateDto1();
-    traineeCreateDto.setFirstName("    ");
-
-    // When
-    ResultActions result = mockMvc.perform(post("/api/trainees")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(traineeCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Trainee's first name must be specified")
-        );
-  }
-
-  @Test
-  void createTrainee_LastNameIsNull_Failure() throws Exception {
-    // Given
-    TraineeCreateDto traineeCreateDto = TraineeTestUtil.getTraineeCreateDto1();
-    traineeCreateDto.setLastName(null);
-
-    // When
-    ResultActions result = mockMvc.perform(post("/api/trainees")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(traineeCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Trainee's last name must be specified")
-        );
-  }
-
-  @Test
-  void createTrainee_LastNameIsEmpty_Failure() throws Exception {
-    // Given
-    TraineeCreateDto traineeCreateDto = TraineeTestUtil.getTraineeCreateDto1();
-    traineeCreateDto.setLastName("");
-
-    // When
-    ResultActions result = mockMvc.perform(post("/api/trainees")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(traineeCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Trainee's last name must be specified")
-        );
-  }
-
-  @Test
-  void createTrainee_LastNameIsBlank_Failure() throws Exception {
-    // Given
-    TraineeCreateDto traineeCreateDto = TraineeTestUtil.getTraineeCreateDto1();
-    traineeCreateDto.setLastName("    ");
-
-    // When
-    ResultActions result = mockMvc.perform(post("/api/trainees")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(traineeCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Trainee's last name must be specified")
-        );
-  }
-
-  @Test
-  void createTrainee_RequiredFieldsAreInvalid_Failure() throws Exception {
-    // Given
-    TraineeCreateDto traineeCreateDto = TraineeTestUtil.getTraineeCreateDto1();
-    traineeCreateDto.setFirstName(null);
-    traineeCreateDto.setLastName(null);
-
-    // When
-    ResultActions result = mockMvc.perform(post("/api/trainees")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(traineeCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(2)),
-            jsonPath("$[*].message")
-                .value(containsInAnyOrder(
-                    "Trainee's first name must be specified",
-                    "Trainee's last name must be specified"
-                ))
-        );
-  }
-
-  @Test
-  void createTrainee_IfException_Failure() throws Exception {
-    // Given
-    TraineeCreateDto traineeCreateDto = TraineeTestUtil.getTraineeCreateDto1();
-
-    // When
-    when(traineeService.createTrainee(any())).thenThrow(RuntimeException.class);
-
-    ResultActions result = mockMvc.perform(post("/api/trainees")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(traineeCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpect(status().isInternalServerError());
-  }
-
-  @Test
   void selectTrainees_Success() throws Exception {
     // Given
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
     List<TraineeInfoDto> expectedResult = TraineeTestUtil.getTraineeInfoDtos();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(traineeService.selectTrainees()).thenReturn(expectedResult);
 
     ResultActions result = mockMvc.perform(get("/api/trainees")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -362,13 +166,27 @@ public class TraineeControllerImplTest {
   }
 
   @Test
-  void selectTrainees_UnauthorizedAccess_Failure() throws Exception {
+  void selectTrainees_NoJwtToken_Failure() throws Exception {
+    // When
+    ResultActions result = mockMvc.perform(get("/api/trainees"));
+
+    // Then
+    result
+        .andDo(print())
+        .andExpectAll(
+            status().isUnauthorized(),
+            content().contentType(MediaType.APPLICATION_JSON),
+            jsonPath("$").value(hasSize(1)),
+            jsonPath("$[0].message").value("Full authentication is required to access this resource")
+        );
+  }
+
+  @Test
+  void selectTrainees_JwtTokenExpired_Failure() throws Exception {
     // Given
-    String token = JwtUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    String token = JwtTokenTestUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
-
     ResultActions result = mockMvc.perform(get("/api/trainees")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
@@ -379,21 +197,21 @@ public class TraineeControllerImplTest {
             status().isUnauthorized(),
             content().contentType(MediaType.APPLICATION_JSON),
             jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Unauthorized access")
+            jsonPath("$[0].message").value(notNullValue())
         );
   }
 
   @Test
   void selectTrainees_IfException_Failure() throws Exception {
     // Given
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(traineeService.selectTrainees()).thenThrow(RuntimeException.class);
 
     ResultActions result = mockMvc.perform(get("/api/trainees")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -405,15 +223,15 @@ public class TraineeControllerImplTest {
   void selectTrainee_Success() throws Exception {
     // Given
     String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_1;
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
     TraineeInfoDto expectedResult = TraineeTestUtil.getTraineeInfoDto1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(traineeService.selectTrainee(any())).thenReturn(expectedResult);
 
     ResultActions result = mockMvc.perform(get("/api/trainees/" + traineeUsername)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -440,14 +258,31 @@ public class TraineeControllerImplTest {
   }
 
   @Test
-  void selectTrainee_UnauthorizedAccess_Failure() throws Exception {
+  void selectTrainee_NoJwtToken_Failure() throws Exception {
     // Given
     String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_1;
-    String token = JwtUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
+    ResultActions result = mockMvc.perform(get("/api/trainees/" + traineeUsername));
 
+    // Then
+    result
+        .andDo(print())
+        .andExpectAll(
+            status().isUnauthorized(),
+            content().contentType(MediaType.APPLICATION_JSON),
+            jsonPath("$").value(hasSize(1)),
+            jsonPath("$[0].message").value("Full authentication is required to access this resource")
+        );
+  }
+
+  @Test
+  void selectTrainee_JwtTokenExpired_Failure() throws Exception {
+    // Given
+    String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_1;
+    String token = JwtTokenTestUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+
+    // When
     ResultActions result = mockMvc.perform(get("/api/trainees/" + traineeUsername)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
@@ -458,7 +293,7 @@ public class TraineeControllerImplTest {
             status().isUnauthorized(),
             content().contentType(MediaType.APPLICATION_JSON),
             jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Unauthorized access")
+            jsonPath("$[0].message").value(notNullValue())
         );
   }
 
@@ -466,14 +301,14 @@ public class TraineeControllerImplTest {
   void selectTrainee_TraineeNotFound_Failure() throws Exception {
     // Given
     String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_1;
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(traineeService.selectTrainee(any())).thenThrow(new TraineeNotFoundException(traineeUsername));
 
     ResultActions result = mockMvc.perform(get("/api/trainees/" + traineeUsername)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -491,14 +326,14 @@ public class TraineeControllerImplTest {
   void selectTrainee_IfException_Failure() throws Exception {
     // Given
     String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_1;
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(traineeService.selectTrainee(any())).thenThrow(RuntimeException.class);
 
     ResultActions result = mockMvc.perform(get("/api/trainees/" + traineeUsername)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -510,15 +345,15 @@ public class TraineeControllerImplTest {
   void updateTrainee_Success() throws Exception {
     // Given
     TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
     TraineeInfoDto expectedResult = TraineeTestUtil.getTraineeInfoDto1AfterUpdate();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(traineeService.updateTrainee(any())).thenReturn(expectedResult);
 
     ResultActions result = mockMvc.perform(put("/api/trainees")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeUpdateDto)));
 
@@ -552,11 +387,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
     traineeUpdateDto.setUsername(null);
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeUpdateDto)));
 
@@ -576,11 +413,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
     traineeUpdateDto.setUsername("");
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeUpdateDto)));
 
@@ -600,11 +439,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
     traineeUpdateDto.setUsername("    ");
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeUpdateDto)));
 
@@ -624,11 +465,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
     traineeUpdateDto.setFirstName(null);
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeUpdateDto)));
 
@@ -648,11 +491,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
     traineeUpdateDto.setFirstName("");
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeUpdateDto)));
 
@@ -672,11 +517,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
     traineeUpdateDto.setFirstName("    ");
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeUpdateDto)));
 
@@ -696,11 +543,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
     traineeUpdateDto.setLastName(null);
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeUpdateDto)));
 
@@ -720,11 +569,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
     traineeUpdateDto.setLastName("");
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeUpdateDto)));
 
@@ -744,11 +595,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
     traineeUpdateDto.setLastName("    ");
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeUpdateDto)));
 
@@ -768,11 +621,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
     traineeUpdateDto.setIsActive(null);
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeUpdateDto)));
 
@@ -795,11 +650,13 @@ public class TraineeControllerImplTest {
     traineeUpdateDto.setFirstName(null);
     traineeUpdateDto.setLastName(null);
     traineeUpdateDto.setIsActive(null);
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeUpdateDto)));
 
@@ -821,14 +678,33 @@ public class TraineeControllerImplTest {
   }
 
   @Test
-  void updateTrainee_UnauthorizedAccess_Failure() throws Exception {
+  void updateTrainee_NoJwtToken_Failure() throws Exception {
     // Given
     TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
-    String token = JwtUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
+    ResultActions result = mockMvc.perform(put("/api/trainees")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(traineeUpdateDto)));
 
+    // Then
+    result
+        .andDo(print())
+        .andExpectAll(
+            status().isUnauthorized(),
+            content().contentType(MediaType.APPLICATION_JSON),
+            jsonPath("$").value(hasSize(1)),
+            jsonPath("$[0].message").value("Full authentication is required to access this resource")
+        );
+  }
+
+  @Test
+  void updateTrainee_JwtTokenExpired_Failure() throws Exception {
+    // Given
+    TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
+    String token = JwtTokenTestUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+
+    // When
     ResultActions result = mockMvc.perform(put("/api/trainees")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
@@ -841,7 +717,7 @@ public class TraineeControllerImplTest {
             status().isUnauthorized(),
             content().contentType(MediaType.APPLICATION_JSON),
             jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Unauthorized access")
+            jsonPath("$[0].message").value(notNullValue())
         );
   }
 
@@ -849,15 +725,15 @@ public class TraineeControllerImplTest {
   void updateTrainee_TraineeNotFound_Failure() throws Exception {
     // Given
     TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(traineeService.updateTrainee(any()))
         .thenThrow(new TraineeNotFoundException(traineeUpdateDto.getUsername()));
 
     ResultActions result = mockMvc.perform(put("/api/trainees")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeUpdateDto)));
 
@@ -878,14 +754,14 @@ public class TraineeControllerImplTest {
   void updateTrainee_IfException_Failure() throws Exception {
     // Given
     TraineeUpdateDto traineeUpdateDto = TraineeTestUtil.getTraineeUpdateDto1();
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(traineeService.updateTrainee(any())).thenThrow(RuntimeException.class);
 
     ResultActions result = mockMvc.perform(put("/api/trainees")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeUpdateDto)));
 
@@ -899,14 +775,14 @@ public class TraineeControllerImplTest {
   void deleteTrainee_Success() throws Exception {
     // Given
     String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_1;
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     doNothing().when(traineeService).deleteTrainee(any());
 
     ResultActions result = mockMvc.perform(delete("/api/trainees/" + traineeUsername)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -915,14 +791,31 @@ public class TraineeControllerImplTest {
   }
 
   @Test
-  void deleteTrainee_UnauthorizedAccess_Failure() throws Exception {
+  void deleteTrainee_NoJwtToken_Failure() throws Exception {
     // Given
     String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_1;
-    String token = JwtUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
+    ResultActions result = mockMvc.perform(delete("/api/trainees/" + traineeUsername));
 
+    // Then
+    result
+        .andDo(print())
+        .andExpectAll(
+            status().isUnauthorized(),
+            content().contentType(MediaType.APPLICATION_JSON),
+            jsonPath("$").value(hasSize(1)),
+            jsonPath("$[0].message").value("Full authentication is required to access this resource")
+        );
+  }
+
+  @Test
+  void deleteTrainee_JwtTokenExpired_Failure() throws Exception {
+    // Given
+    String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_1;
+    String token = JwtTokenTestUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+
+    // When
     ResultActions result = mockMvc.perform(delete("/api/trainees/" + traineeUsername)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
@@ -933,7 +826,7 @@ public class TraineeControllerImplTest {
             status().isUnauthorized(),
             content().contentType(MediaType.APPLICATION_JSON),
             jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Unauthorized access")
+            jsonPath("$[0].message").value(notNullValue())
         );
   }
 
@@ -941,14 +834,14 @@ public class TraineeControllerImplTest {
   void deleteTrainee_TraineeNotFound_Failure() throws Exception {
     // Given
     String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_1;
-    String token = JwtUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     doThrow(new TraineeNotFoundException(traineeUsername)).when(traineeService).deleteTrainee(any());
 
     ResultActions result = mockMvc.perform(delete("/api/trainees/" + traineeUsername)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -966,14 +859,14 @@ public class TraineeControllerImplTest {
   void deleteTrainee_IfException_Failure() throws Exception {
     // Given
     String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_1;
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     doThrow(RuntimeException.class).when(traineeService).deleteTrainee(any());
 
     ResultActions result = mockMvc.perform(delete("/api/trainees/" + traineeUsername)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -985,15 +878,15 @@ public class TraineeControllerImplTest {
   void updateTrainerListOfTrainee_Success() throws Exception {
     // Given
     TraineeTrainersUpdateDto traineeTrainersUpdateDto = TraineeTestUtil.getTraineeTrainersUpdateDto2();
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
     List<TrainerShortInfoDto> expectedResult = TraineeTestUtil.getTraineeUpdatedTrainerShortInfoDtosList2();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(traineeService.updateTrainerList(any())).thenReturn(expectedResult);
 
     ResultActions result = mockMvc.perform(put("/api/trainees/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeTrainersUpdateDto)));
 
@@ -1020,11 +913,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeTrainersUpdateDto traineeTrainersUpdateDto = TraineeTestUtil.getTraineeTrainersUpdateDto2();
     traineeTrainersUpdateDto.setTraineeUsername(null);
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeTrainersUpdateDto)));
 
@@ -1044,11 +939,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeTrainersUpdateDto traineeTrainersUpdateDto = TraineeTestUtil.getTraineeTrainersUpdateDto2();
     traineeTrainersUpdateDto.setTraineeUsername("");
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeTrainersUpdateDto)));
 
@@ -1068,11 +965,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeTrainersUpdateDto traineeTrainersUpdateDto = TraineeTestUtil.getTraineeTrainersUpdateDto2();
     traineeTrainersUpdateDto.setTraineeUsername("    ");
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeTrainersUpdateDto)));
 
@@ -1092,11 +991,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeTrainersUpdateDto traineeTrainersUpdateDto = TraineeTestUtil.getTraineeTrainersUpdateDto2();
     traineeTrainersUpdateDto.setTrainerUsernames(null);
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeTrainersUpdateDto)));
 
@@ -1116,11 +1017,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeTrainersUpdateDto traineeTrainersUpdateDto = TraineeTestUtil.getTraineeTrainersUpdateDto2();
     traineeTrainersUpdateDto.setTrainerUsernames(Collections.emptyList());
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeTrainersUpdateDto)));
 
@@ -1141,11 +1044,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeTrainersUpdateDto traineeTrainersUpdateDto = TraineeTestUtil.getTraineeTrainersUpdateDto2();
     traineeTrainersUpdateDto.setTrainerUsernames(Collections.singletonList(null));
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeTrainersUpdateDto)));
 
@@ -1166,11 +1071,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeTrainersUpdateDto traineeTrainersUpdateDto = TraineeTestUtil.getTraineeTrainersUpdateDto2();
     traineeTrainersUpdateDto.setTrainerUsernames(Collections.singletonList(""));
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeTrainersUpdateDto)));
 
@@ -1191,11 +1098,13 @@ public class TraineeControllerImplTest {
     // Given
     TraineeTrainersUpdateDto traineeTrainersUpdateDto = TraineeTestUtil.getTraineeTrainersUpdateDto2();
     traineeTrainersUpdateDto.setTrainerUsernames(Collections.singletonList("   "));
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeTrainersUpdateDto)));
 
@@ -1217,11 +1126,13 @@ public class TraineeControllerImplTest {
     TraineeTrainersUpdateDto traineeTrainersUpdateDto = TraineeTestUtil.getTraineeTrainersUpdateDto2();
     traineeTrainersUpdateDto.setTraineeUsername(null);
     traineeTrainersUpdateDto.setTrainerUsernames(Collections.emptyList());
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainees/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeTrainersUpdateDto)));
 
@@ -1241,14 +1152,33 @@ public class TraineeControllerImplTest {
   }
 
   @Test
-  void updateTrainerListOfTrainee_UnauthorizedAccess_Failure() throws Exception {
+  void updateTrainerListOfTrainee_NoJwtToken_Failure() throws Exception {
     // Given
     TraineeTrainersUpdateDto traineeTrainersUpdateDto = TraineeTestUtil.getTraineeTrainersUpdateDto2();
-    String token = JwtUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
+    ResultActions result = mockMvc.perform(put("/api/trainees/trainers")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(traineeTrainersUpdateDto)));
 
+    // Then
+    result
+        .andDo(print())
+        .andExpectAll(
+            status().isUnauthorized(),
+            content().contentType(MediaType.APPLICATION_JSON),
+            jsonPath("$").value(hasSize(1)),
+            jsonPath("$[0].message").value("Full authentication is required to access this resource")
+        );
+  }
+
+  @Test
+  void updateTrainerListOfTrainee_JwtTokenExpired_Failure() throws Exception {
+    // Given
+    TraineeTrainersUpdateDto traineeTrainersUpdateDto = TraineeTestUtil.getTraineeTrainersUpdateDto2();
+    String token = JwtTokenTestUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+
+    // When
     ResultActions result = mockMvc.perform(put("/api/trainees/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
@@ -1261,7 +1191,7 @@ public class TraineeControllerImplTest {
             status().isUnauthorized(),
             content().contentType(MediaType.APPLICATION_JSON),
             jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Unauthorized access")
+            jsonPath("$[0].message").value(notNullValue())
         );
   }
 
@@ -1269,15 +1199,15 @@ public class TraineeControllerImplTest {
   void updateTrainerListOfTrainee_TraineeNotFound_Failure() throws Exception {
     // Given
     TraineeTrainersUpdateDto traineeTrainersUpdateDto = TraineeTestUtil.getTraineeTrainersUpdateDto2();
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(traineeService.updateTrainerList(any()))
         .thenThrow(new TraineeNotFoundException(traineeTrainersUpdateDto.getTraineeUsername()));
 
     ResultActions result = mockMvc.perform(put("/api/trainees/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeTrainersUpdateDto)));
 
@@ -1298,15 +1228,15 @@ public class TraineeControllerImplTest {
   void updateTrainerListOfTrainee_TrainersNotFound_Failure() throws Exception {
     // Given
     TraineeTrainersUpdateDto traineeTrainersUpdateDto = TraineeTestUtil.getTraineeTrainersUpdateDto2();
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(traineeService.updateTrainerList(any()))
         .thenThrow(new TrainerNotFoundException(traineeTrainersUpdateDto.getTrainerUsernames()));
 
     ResultActions result = mockMvc.perform(put("/api/trainees/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeTrainersUpdateDto)));
 
@@ -1327,14 +1257,14 @@ public class TraineeControllerImplTest {
   void updateTrainerListOfTrainee_IfException_Failure() throws Exception {
     // Given
     TraineeTrainersUpdateDto traineeTrainersUpdateDto = TraineeTestUtil.getTraineeTrainersUpdateDto2();
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(traineeService.updateTrainerList(any())).thenThrow(RuntimeException.class);
 
     ResultActions result = mockMvc.perform(put("/api/trainees/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(traineeTrainersUpdateDto)));
 
@@ -1353,11 +1283,11 @@ public class TraineeControllerImplTest {
     String trainerName = String.format("%s %s",
         UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_3, UserTestUtil.TEST_TRAINER_USER_LAST_NAME_3);
     String trainingType = TrainingTypeTestUtil.TEST_TRAINING_TYPE_NAME_3;
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
     List<TrainingInfoDto> expectedResult = List.of(TrainingTestUtil.getTrainingInfoDto2());
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(traineeService.findTraineeTrainings(any(), any(), any(), any(), any()))
         .thenReturn(expectedResult);
 
@@ -1367,7 +1297,7 @@ public class TraineeControllerImplTest {
         .param("toDate", toDate)
         .param("trainerName", trainerName)
         .param("trainingType", trainingType)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -1388,11 +1318,13 @@ public class TraineeControllerImplTest {
   @Test
   void getTraineeTrainings_MissingRequiredParameters_Failure() throws Exception {
     // Given
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(get("/api/trainees/trainings")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -1410,15 +1342,15 @@ public class TraineeControllerImplTest {
     // Given
     String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_2;
     String fromDate = "some text";
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
 
     ResultActions result = mockMvc.perform(get("/api/trainees/trainings")
         .param("username", traineeUsername)
         .param("fromDate", fromDate)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -1437,15 +1369,15 @@ public class TraineeControllerImplTest {
     // Given
     String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_2;
     String toDate = "some text";
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
 
     ResultActions result = mockMvc.perform(get("/api/trainees/trainings")
         .param("username", traineeUsername)
         .param("toDate", toDate)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -1460,7 +1392,7 @@ public class TraineeControllerImplTest {
   }
 
   @Test
-  void getTraineeTrainings_UnauthorizedAccess_Failure() throws Exception {
+  void getTraineeTrainings_NoJwtToken_Failure() throws Exception {
     // Given
     String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_2;
     String fromDate = "2024-02-05";
@@ -1468,11 +1400,38 @@ public class TraineeControllerImplTest {
     String trainerName = String.format("%s %s",
         UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_3, UserTestUtil.TEST_TRAINER_USER_LAST_NAME_3);
     String trainingType = TrainingTypeTestUtil.TEST_TRAINING_TYPE_NAME_3;
-    String token = JwtUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
+    ResultActions result = mockMvc.perform(get("/api/trainees/trainings")
+        .param("username", traineeUsername)
+        .param("fromDate", fromDate)
+        .param("toDate", toDate)
+        .param("trainerName", trainerName)
+        .param("trainingType", trainingType));
 
+    // Then
+    result
+        .andDo(print())
+        .andExpectAll(
+            status().isUnauthorized(),
+            content().contentType(MediaType.APPLICATION_JSON),
+            jsonPath("$").value(hasSize(1)),
+            jsonPath("$[0].message").value("Full authentication is required to access this resource")
+        );
+  }
+
+  @Test
+  void getTraineeTrainings_JwtTokenExpired_Failure() throws Exception {
+    // Given
+    String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_2;
+    String fromDate = "2024-02-05";
+    String toDate = "2024-02-20";
+    String trainerName = String.format("%s %s",
+        UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_3, UserTestUtil.TEST_TRAINER_USER_LAST_NAME_3);
+    String trainingType = TrainingTypeTestUtil.TEST_TRAINING_TYPE_NAME_3;
+    String token = JwtTokenTestUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+
+    // When
     ResultActions result = mockMvc.perform(get("/api/trainees/trainings")
         .param("username", traineeUsername)
         .param("fromDate", fromDate)
@@ -1488,7 +1447,7 @@ public class TraineeControllerImplTest {
             status().isUnauthorized(),
             content().contentType(MediaType.APPLICATION_JSON),
             jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Unauthorized access")
+            jsonPath("$[0].message").value(notNullValue())
         );
   }
 
@@ -1501,10 +1460,10 @@ public class TraineeControllerImplTest {
     String trainerName = String.format("%s %s",
         UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_3, UserTestUtil.TEST_TRAINER_USER_LAST_NAME_3);
     String trainingType = TrainingTypeTestUtil.TEST_TRAINING_TYPE_NAME_3;
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(traineeService.findTraineeTrainings(any(), any(), any(), any(), any()))
         .thenThrow(RuntimeException.class);
 
@@ -1514,7 +1473,7 @@ public class TraineeControllerImplTest {
         .param("toDate", toDate)
         .param("trainerName", trainerName)
         .param("trainingType", trainingType)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result

@@ -4,16 +4,20 @@ import com.epam.gymapp.dto.ChangePasswordDto;
 import com.epam.gymapp.dto.JwtDto;
 import com.epam.gymapp.dto.UserActivateDto;
 import com.epam.gymapp.dto.UserCredentialsDto;
-import com.epam.gymapp.exception.BadCredentialsException;
 import com.epam.gymapp.exception.UserNotFoundException;
-import com.epam.gymapp.jwt.JwtService;
+import com.epam.gymapp.model.JwtToken;
 import com.epam.gymapp.model.User;
+import com.epam.gymapp.repository.JwtTokenRepository;
 import com.epam.gymapp.repository.UserRepository;
-import java.util.Arrays;
-import java.util.Optional;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,15 +26,28 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
   private static final Logger log = LoggerFactory.getLogger(UserService.class);
+  private static final String BAD_CREDENTIALS_MESSAGE = "Specified wrong username or password";
 
   private final UserRepository userRepository;
+  private final JwtTokenRepository jwtTokenRepository;
   private final JwtService jwtService;
 
+  private final AuthenticationManager authenticationManager;
+  private final PasswordEncoder passwordEncoder;
+
+  @Transactional
   public JwtDto authenticate(UserCredentialsDto userCredentialsDto) {
     log.info("Authenticating User: {}", userCredentialsDto.getUsername());
 
-    User user = checkCredentials(userCredentialsDto.getUsername(), userCredentialsDto.getPassword());
+    Authentication authentication = authenticationManager.authenticate(
+        new UsernamePasswordAuthenticationToken(
+            userCredentialsDto.getUsername(), String.valueOf(userCredentialsDto.getPassword()))
+    );
+
+    User user = (User) authentication.getPrincipal();
     String token = jwtService.generateToken(user);
+    revokeAllUserTokens(user);
+    saveUserToken(user, token);
 
     log.info("User (username={}) authenticated successfully", userCredentialsDto.getUsername());
     return new JwtDto(token);
@@ -41,7 +58,7 @@ public class UserService {
     log.info("Changing User's (username={}) password", changePasswordDto.getUsername());
 
     User user = checkCredentials(changePasswordDto.getUsername(), changePasswordDto.getOldPassword());
-    user.setPassword(changePasswordDto.getNewPassword());
+    user.setPassword(passwordEncoder.encode(String.valueOf(changePasswordDto.getNewPassword())));
 
     userRepository.save(user);
 
@@ -70,18 +87,32 @@ public class UserService {
     }
   }
 
-  public Optional<User> getUserByUsername(String username) {
-    return userRepository.findByUsernameIgnoreCase(username);
-  }
-
   private User checkCredentials(String username, char[] password) {
     User user = userRepository.findByUsernameIgnoreCase(username)
-        .orElseThrow(BadCredentialsException::new);
+        .orElseThrow(() -> new BadCredentialsException(BAD_CREDENTIALS_MESSAGE));
 
-    if (!Arrays.equals(password, user.getPassword())) {
-      throw new BadCredentialsException();
+    if (!passwordEncoder.matches(String.valueOf(password), user.getPassword())) {
+      throw new BadCredentialsException(BAD_CREDENTIALS_MESSAGE);
     }
 
     return user;
+  }
+
+  private void revokeAllUserTokens(User user) {
+    List<JwtToken> jwtTokens = jwtTokenRepository.findAllValidTokensByUserId(user.getId());
+
+    if (jwtTokens.isEmpty()) {
+      return;
+    }
+    jwtTokens.forEach(jwt -> jwt.setRevoked(true));
+    jwtTokenRepository.saveAll(jwtTokens);
+  }
+
+  private void saveUserToken(User user, String token) {
+    JwtToken jwtToken = JwtToken.builder()
+        .token(token)
+        .user(user)
+        .build();
+    jwtTokenRepository.save(jwtToken);
   }
 }

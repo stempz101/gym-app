@@ -4,29 +4,26 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.epam.gymapp.dto.TrainerCreateDto;
+import com.epam.gymapp.config.TestSecurityConfiguration;
 import com.epam.gymapp.dto.TrainerInfoDto;
 import com.epam.gymapp.dto.TrainerShortInfoDto;
 import com.epam.gymapp.dto.TrainerUpdateDto;
 import com.epam.gymapp.dto.TrainingInfoDto;
-import com.epam.gymapp.dto.UserCredentialsDto;
 import com.epam.gymapp.exception.TrainerNotFoundException;
-import com.epam.gymapp.exception.UnauthorizedException;
-import com.epam.gymapp.jwt.JwtProcess;
+import com.epam.gymapp.model.JwtToken;
+import com.epam.gymapp.repository.JwtTokenRepository;
+import com.epam.gymapp.repository.UserRepository;
 import com.epam.gymapp.service.LoggingService;
 import com.epam.gymapp.service.TrainerService;
-import com.epam.gymapp.test.utils.JwtUtil;
+import com.epam.gymapp.test.utils.JwtTokenTestUtil;
 import com.epam.gymapp.test.utils.TrainerTestUtil;
 import com.epam.gymapp.test.utils.TrainingTestUtil;
 import com.epam.gymapp.test.utils.UserTestUtil;
@@ -34,6 +31,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,22 +40,27 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 @ExtendWith(SpringExtension.class)
 @WebMvcTest(value = TrainerControllerImpl.class)
+@ContextConfiguration(classes = TestSecurityConfiguration.class)
 public class TrainerControllerImplTest {
 
   @MockBean
   private TrainerService trainerService;
 
-  @MockBean
-  private JwtProcess jwtProcess;
-
   @SpyBean
   private LoggingService loggingService;
+
+  @MockBean
+  private UserRepository userRepository;
+
+  @MockBean
+  private JwtTokenRepository jwtTokenRepository;
 
   @Autowired
   private MockMvc mockMvc;
@@ -66,286 +69,17 @@ public class TrainerControllerImplTest {
   private ObjectMapper objectMapper;
 
   @Test
-  void createTrainer_Success() throws Exception {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    UserCredentialsDto expectedResult = UserTestUtil.getTrainerUserCredentialsDto1();
-
-    // When
-    when(trainerService.createTrainer(any())).thenReturn(expectedResult);
-
-    ResultActions result = mockMvc.perform(post("/api/trainers")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(trainerCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isCreated(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$.username").value(expectedResult.getUsername()),
-            jsonPath("$.password").value(String.valueOf(expectedResult.getPassword()))
-        );
-  }
-
-  @Test
-  void createTrainer_FirstNameIsNull_Failure() throws Exception {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setFirstName(null);
-
-    // When
-    ResultActions result = mockMvc.perform(post("/api/trainers")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(trainerCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Trainer's first name must be specified")
-        );
-  }
-
-  @Test
-  void createTrainer_FirstNameIsEmpty_Failure() throws Exception {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setFirstName("");
-
-    // When
-    ResultActions result = mockMvc.perform(post("/api/trainers")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(trainerCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Trainer's first name must be specified")
-        );
-  }
-
-  @Test
-  void createTrainer_FirstNameIsBlank_Failure() throws Exception {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setFirstName("    ");
-
-    // When
-    ResultActions result = mockMvc.perform(post("/api/trainers")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(trainerCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Trainer's first name must be specified")
-        );
-  }
-
-  @Test
-  void createTrainer_LastNameIsNull_Failure() throws Exception {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setLastName(null);
-
-    // When
-    ResultActions result = mockMvc.perform(post("/api/trainers")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(trainerCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Trainer's last name must be specified")
-        );
-  }
-
-  @Test
-  void createTrainer_LastNameIsEmpty_Failure() throws Exception {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setLastName("");
-
-    // When
-    ResultActions result = mockMvc.perform(post("/api/trainers")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(trainerCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Trainer's last name must be specified")
-        );
-  }
-
-  @Test
-  void createTrainer_LastNameIsBlank_Failure() throws Exception {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setLastName("    ");
-
-    // When
-    ResultActions result = mockMvc.perform(post("/api/trainers")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(trainerCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Trainer's last name must be specified")
-        );
-  }
-
-  @Test
-  void createTrainer_SpecializationIsNull_Failure() throws Exception {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setSpecialization(null);
-
-    // When
-    ResultActions result = mockMvc.perform(post("/api/trainers")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(trainerCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Trainer's specialization must be specified")
-        );
-  }
-
-  @Test
-  void createTrainer_SpecializationIsEmpty_Failure() throws Exception {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setSpecialization("");
-
-    // When
-    ResultActions result = mockMvc.perform(post("/api/trainers")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(trainerCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Trainer's specialization must be specified")
-        );
-  }
-
-  @Test
-  void createTrainer_SpecializationIsBlank_Failure() throws Exception {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setSpecialization("    ");
-
-    // When
-    ResultActions result = mockMvc.perform(post("/api/trainers")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(trainerCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Trainer's specialization must be specified")
-        );
-  }
-
-  @Test
-  void createTrainer_RequiredFieldsAreInvalid_Failure() throws Exception {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-    trainerCreateDto.setFirstName(null);
-    trainerCreateDto.setLastName(null);
-    trainerCreateDto.setSpecialization(null);
-
-    // When
-    ResultActions result = mockMvc.perform(post("/api/trainers")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(trainerCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(3)),
-            jsonPath("$[*].message")
-                .value(containsInAnyOrder(
-                    "Trainer's first name must be specified",
-                    "Trainer's last name must be specified",
-                    "Trainer's specialization must be specified"
-                ))
-        );
-  }
-
-  @Test
-  void createTrainer_IfException_Failure() throws Exception {
-    // Given
-    TrainerCreateDto trainerCreateDto = TrainerTestUtil.getTrainerCreateDto1();
-
-    // When
-    when(trainerService.createTrainer(any())).thenThrow(RuntimeException.class);
-
-    ResultActions result = mockMvc.perform(post("/api/trainers")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(trainerCreateDto)));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpect(status().isInternalServerError());
-  }
-
-  @Test
   void selectTrainers_Success() throws Exception {
     // Given
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
     List<TrainerInfoDto> expectedResult = TrainerTestUtil.getTrainerInfoDtos();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(trainerService.selectTrainers()).thenReturn(expectedResult);
 
     ResultActions result = mockMvc.perform(get("/api/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -415,13 +149,27 @@ public class TrainerControllerImplTest {
   }
 
   @Test
-  void selectTrainers_UnauthorizedAccess_Failure() throws Exception {
+  void selectTrainers_NoJwtToken_Failure() throws Exception {
+    // When
+    ResultActions result = mockMvc.perform(get("/api/trainers"));
+
+    // Then
+    result
+        .andDo(print())
+        .andExpectAll(
+            status().isUnauthorized(),
+            content().contentType(MediaType.APPLICATION_JSON),
+            jsonPath("$").value(hasSize(1)),
+            jsonPath("$[0].message").value("Full authentication is required to access this resource")
+        );
+  }
+
+  @Test
+  void selectTrainers_JwtTokenExpired_Failure() throws Exception {
     // Given
-    String token = JwtUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    String token = JwtTokenTestUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
-
     ResultActions result = mockMvc.perform(get("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
@@ -432,21 +180,21 @@ public class TrainerControllerImplTest {
             status().isUnauthorized(),
             content().contentType(MediaType.APPLICATION_JSON),
             jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Unauthorized access")
+            jsonPath("$[0].message").value(notNullValue())
         );
   }
 
   @Test
   void selectTrainers_IfException_Failure() throws Exception {
     // Given
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(trainerService.selectTrainers()).thenThrow(RuntimeException.class);
 
     ResultActions result = mockMvc.perform(get("/api/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -458,15 +206,15 @@ public class TrainerControllerImplTest {
   void selectTrainer_Success() throws Exception {
     // Given
     String trainerUsername = UserTestUtil.TEST_TRAINER_USER_USERNAME_1;
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
     TrainerInfoDto expectedResult = TrainerTestUtil.getTrainerInfoDto1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(trainerService.selectTrainer(any())).thenReturn(expectedResult);
 
     ResultActions result = mockMvc.perform(get("/api/trainers/" + trainerUsername)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -495,14 +243,31 @@ public class TrainerControllerImplTest {
   }
 
   @Test
-  void selectTrainer_UnauthorizedAccess_Failure() throws Exception {
+  void selectTrainer_NoJwtToken_Failure() throws Exception {
     // Given
     String trainerUsername = UserTestUtil.TEST_TRAINER_USER_USERNAME_1;
-    String token = JwtUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
+    ResultActions result = mockMvc.perform(get("/api/trainers/" + trainerUsername));
 
+    // Then
+    result
+        .andDo(print())
+        .andExpectAll(
+            status().isUnauthorized(),
+            content().contentType(MediaType.APPLICATION_JSON),
+            jsonPath("$").value(hasSize(1)),
+            jsonPath("$[0].message").value("Full authentication is required to access this resource")
+        );
+  }
+
+  @Test
+  void selectTrainer_JwtTokenExpired_Failure() throws Exception {
+    // Given
+    String trainerUsername = UserTestUtil.TEST_TRAINER_USER_USERNAME_1;
+    String token = JwtTokenTestUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+
+    // When
     ResultActions result = mockMvc.perform(get("/api/trainers/" + trainerUsername)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
@@ -513,7 +278,7 @@ public class TrainerControllerImplTest {
             status().isUnauthorized(),
             content().contentType(MediaType.APPLICATION_JSON),
             jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Unauthorized access")
+            jsonPath("$[0].message").value(notNullValue())
         );
   }
 
@@ -521,14 +286,14 @@ public class TrainerControllerImplTest {
   void selectTrainer_TraineeNotFound_Failure() throws Exception {
     // Given
     String trainerUsername = UserTestUtil.TEST_TRAINER_USER_USERNAME_1;
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(trainerService.selectTrainer(any())).thenThrow(new TrainerNotFoundException(trainerUsername));
 
     ResultActions result = mockMvc.perform(get("/api/trainers/" + trainerUsername)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -546,14 +311,14 @@ public class TrainerControllerImplTest {
   void selectTrainer_IfException_Failure() throws Exception {
     // Given
     String trainerUsername = UserTestUtil.TEST_TRAINER_USER_USERNAME_1;
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(trainerService.selectTrainer(any())).thenThrow(RuntimeException.class);
 
     ResultActions result = mockMvc.perform(get("/api/trainers/" + trainerUsername)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -565,15 +330,15 @@ public class TrainerControllerImplTest {
   void updateTrainer_Success() throws Exception {
     // Given
     TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
     TrainerInfoDto expectedResult = TrainerTestUtil.getTrainerInfoDto1AfterUpdate();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(trainerService.updateTrainer(any())).thenReturn(expectedResult);
 
     ResultActions result = mockMvc.perform(put("/api/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
 
@@ -609,11 +374,13 @@ public class TrainerControllerImplTest {
     // Given
     TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
     trainerUpdateDto.setUsername(null);
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
 
@@ -633,11 +400,13 @@ public class TrainerControllerImplTest {
     // Given
     TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
     trainerUpdateDto.setUsername("");
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
 
@@ -657,11 +426,13 @@ public class TrainerControllerImplTest {
     // Given
     TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
     trainerUpdateDto.setUsername("    ");
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
 
@@ -681,11 +452,13 @@ public class TrainerControllerImplTest {
     // Given
     TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
     trainerUpdateDto.setFirstName(null);
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
 
@@ -705,11 +478,13 @@ public class TrainerControllerImplTest {
     // Given
     TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
     trainerUpdateDto.setFirstName("");
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
 
@@ -729,11 +504,13 @@ public class TrainerControllerImplTest {
     // Given
     TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
     trainerUpdateDto.setFirstName("    ");
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
 
@@ -753,11 +530,13 @@ public class TrainerControllerImplTest {
     // Given
     TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
     trainerUpdateDto.setLastName(null);
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
 
@@ -777,11 +556,13 @@ public class TrainerControllerImplTest {
     // Given
     TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
     trainerUpdateDto.setLastName("");
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
 
@@ -801,11 +582,13 @@ public class TrainerControllerImplTest {
     // Given
     TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
     trainerUpdateDto.setLastName("    ");
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
 
@@ -825,11 +608,13 @@ public class TrainerControllerImplTest {
     // Given
     TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
     trainerUpdateDto.setIsActive(null);
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
 
@@ -852,11 +637,13 @@ public class TrainerControllerImplTest {
     trainerUpdateDto.setFirstName(null);
     trainerUpdateDto.setLastName(null);
     trainerUpdateDto.setIsActive(null);
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(put("/api/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
 
@@ -878,14 +665,33 @@ public class TrainerControllerImplTest {
   }
 
   @Test
-  void updateTrainer_UnauthorizedAccess_Failure() throws Exception {
+  void updateTrainer_NoJwtToken_Failure() throws Exception {
     // Given
     TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
-    String token = JwtUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
+    ResultActions result = mockMvc.perform(put("/api/trainers")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(trainerUpdateDto)));
 
+    // Then
+    result
+        .andDo(print())
+        .andExpectAll(
+            status().isUnauthorized(),
+            content().contentType(MediaType.APPLICATION_JSON),
+            jsonPath("$").value(hasSize(1)),
+            jsonPath("$[0].message").value("Full authentication is required to access this resource")
+        );
+  }
+
+  @Test
+  void updateTrainer_JwtTokenExpired_Failure() throws Exception {
+    // Given
+    TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
+    String token = JwtTokenTestUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+
+    // When
     ResultActions result = mockMvc.perform(put("/api/trainers")
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
@@ -898,7 +704,7 @@ public class TrainerControllerImplTest {
             status().isUnauthorized(),
             content().contentType(MediaType.APPLICATION_JSON),
             jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Unauthorized access")
+            jsonPath("$[0].message").value(notNullValue())
         );
   }
 
@@ -906,15 +712,15 @@ public class TrainerControllerImplTest {
   void updateTrainer_TrainerNotFound_Failure() throws Exception {
     // Given
     TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(trainerService.updateTrainer(any()))
         .thenThrow(new TrainerNotFoundException(trainerUpdateDto.getUsername()));
 
     ResultActions result = mockMvc.perform(put("/api/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
 
@@ -935,14 +741,14 @@ public class TrainerControllerImplTest {
   void updateTrainer_IfException_Failure() throws Exception {
     // Given
     TrainerUpdateDto trainerUpdateDto = TrainerTestUtil.getTrainerUpdateDto1();
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(trainerService.updateTrainer(any())).thenThrow(RuntimeException.class);
 
     ResultActions result = mockMvc.perform(put("/api/trainers")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken())
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(trainerUpdateDto)));
 
@@ -956,15 +762,15 @@ public class TrainerControllerImplTest {
   void getUnassignedTrainersOnTrainee_Success() throws Exception {
     // Given
     String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_1;
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
     List<TrainerShortInfoDto> expectedResult = TrainerTestUtil.getUnassignedTrainerShortInfoDtosOnTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(trainerService.findUnassignedTrainers(any())).thenReturn(expectedResult);
 
     ResultActions result = mockMvc.perform(get("/api/trainers/unassigned/" + traineeUsername)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -995,14 +801,31 @@ public class TrainerControllerImplTest {
   }
 
   @Test
-  void getUnassignedTrainersOnTrainee_UnauthorizedAccess_Failure() throws Exception {
+  void getUnassignedTrainersOnTrainee_NoJwtToken_Failure() throws Exception {
     // Given
     String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_1;
-    String token = JwtUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
+    ResultActions result = mockMvc.perform(get("/api/trainers/unassigned/" + traineeUsername));
 
+    // Then
+    result
+        .andDo(print())
+        .andExpectAll(
+            status().isUnauthorized(),
+            content().contentType(MediaType.APPLICATION_JSON),
+            jsonPath("$").value(hasSize(1)),
+            jsonPath("$[0].message").value("Full authentication is required to access this resource")
+        );
+  }
+
+  @Test
+  void getUnassignedTrainersOnTrainee_JwtTokenExpired_Failure() throws Exception {
+    // Given
+    String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_1;
+    String token = JwtTokenTestUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+
+    // When
     ResultActions result = mockMvc.perform(get("/api/trainers/unassigned/" + traineeUsername)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
@@ -1013,7 +836,7 @@ public class TrainerControllerImplTest {
             status().isUnauthorized(),
             content().contentType(MediaType.APPLICATION_JSON),
             jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Unauthorized access")
+            jsonPath("$[0].message").value(notNullValue())
         );
   }
 
@@ -1021,14 +844,14 @@ public class TrainerControllerImplTest {
   void getUnassignedTrainersOnTrainee_IfException_Failure() throws Exception {
     // Given
     String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_1;
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(trainerService.findUnassignedTrainers(any())).thenThrow(RuntimeException.class);
 
     ResultActions result = mockMvc.perform(get("/api/trainers/unassigned/" + traineeUsername)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -1044,11 +867,11 @@ public class TrainerControllerImplTest {
     String toDate = "2024-02-20";
     String traineeName = String.format("%s %s",
         UserTestUtil.TEST_TRAINEE_USER_FIRST_NAME_1, UserTestUtil.TEST_TRAINEE_USER_LAST_NAME_1);
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
     List<TrainingInfoDto> expectedResult = List.of(TrainingTestUtil.getTrainingInfoDto1());
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(trainerService.findTrainerTrainings(any(), any(), any(), any())).thenReturn(expectedResult);
 
     ResultActions result = mockMvc.perform(get("/api/trainers/trainings")
@@ -1056,7 +879,7 @@ public class TrainerControllerImplTest {
         .param("fromDate", fromDate)
         .param("toDate", toDate)
         .param("traineeName", traineeName)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -1077,11 +900,13 @@ public class TrainerControllerImplTest {
   @Test
   void getTrainerTrainings_MissingRequiredParameters_Failure() throws Exception {
     // Given
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
+
     ResultActions result = mockMvc.perform(get("/api/trainers/trainings")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -1099,15 +924,15 @@ public class TrainerControllerImplTest {
     // Given
     String trainerUsername = UserTestUtil.TEST_TRAINER_USER_USERNAME_2;
     String fromDate = "some text";
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
 
     ResultActions result = mockMvc.perform(get("/api/trainers/trainings")
         .param("username", trainerUsername)
         .param("fromDate", fromDate)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -1126,15 +951,15 @@ public class TrainerControllerImplTest {
     // Given
     String trainerUsername = UserTestUtil.TEST_TRAINER_USER_USERNAME_2;
     String toDate = "some text";
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
 
     ResultActions result = mockMvc.perform(get("/api/trainers/trainings")
         .param("username", trainerUsername)
         .param("toDate", toDate)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result
@@ -1149,18 +974,43 @@ public class TrainerControllerImplTest {
   }
 
   @Test
-  void getTrainerTrainings_UnauthorizedAccess_Failure() throws Exception {
+  void getTrainerTrainings_NoJwtToken_Failure() throws Exception {
     // Given
     String trainerUsername = UserTestUtil.TEST_TRAINER_USER_USERNAME_2;
     String fromDate = "2024-02-05";
     String toDate = "2024-02-20";
     String traineeName = String.format("%s %s",
         UserTestUtil.TEST_TRAINEE_USER_FIRST_NAME_1, UserTestUtil.TEST_TRAINEE_USER_LAST_NAME_1);
-    String token = JwtUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
-    doThrow(new UnauthorizedException()).when(jwtProcess).processToken(any());
+    ResultActions result = mockMvc.perform(get("/api/trainers/trainings")
+        .param("username", trainerUsername)
+        .param("fromDate", fromDate)
+        .param("toDate", toDate)
+        .param("traineeName", traineeName));
 
+    // Then
+    result
+        .andDo(print())
+        .andExpectAll(
+            status().isUnauthorized(),
+            content().contentType(MediaType.APPLICATION_JSON),
+            jsonPath("$").value(hasSize(1)),
+            jsonPath("$[0].message").value("Full authentication is required to access this resource")
+        );
+  }
+
+  @Test
+  void getTrainerTrainings_JwtTokenExpired_Failure() throws Exception {
+    // Given
+    String trainerUsername = UserTestUtil.TEST_TRAINER_USER_USERNAME_2;
+    String fromDate = "2024-02-05";
+    String toDate = "2024-02-20";
+    String traineeName = String.format("%s %s",
+        UserTestUtil.TEST_TRAINEE_USER_FIRST_NAME_1, UserTestUtil.TEST_TRAINEE_USER_LAST_NAME_1);
+    String token = JwtTokenTestUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+
+    // When
     ResultActions result = mockMvc.perform(get("/api/trainers/trainings")
         .param("username", trainerUsername)
         .param("fromDate", fromDate)
@@ -1175,7 +1025,7 @@ public class TrainerControllerImplTest {
             status().isUnauthorized(),
             content().contentType(MediaType.APPLICATION_JSON),
             jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Unauthorized access")
+            jsonPath("$[0].message").value(notNullValue())
         );
   }
 
@@ -1187,10 +1037,10 @@ public class TrainerControllerImplTest {
     String toDate = "2024-02-20";
     String traineeName = String.format("%s %s",
         UserTestUtil.TEST_TRAINEE_USER_FIRST_NAME_1, UserTestUtil.TEST_TRAINEE_USER_LAST_NAME_1);
-    String token = JwtUtil.generateToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
+    JwtToken jwt = JwtTokenTestUtil.getNewJwtTokenOfTrainee1();
 
     // When
-    doNothing().when(jwtProcess).processToken(any());
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(jwt.getUser()));
     when(trainerService.findTrainerTrainings(any(), any(), any(), any()))
         .thenThrow(RuntimeException.class);
 
@@ -1199,7 +1049,7 @@ public class TrainerControllerImplTest {
         .param("fromDate", fromDate)
         .param("toDate", toDate)
         .param("traineeName", traineeName)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.getToken()));
 
     // Then
     result

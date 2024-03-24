@@ -10,6 +10,12 @@ insert into _user (id, first_name, last_name, username, password, is_active) val
 
 alter sequence _user_seq restart with (select max(id) + 50 from _user);
 
+insert into jwt_token (id, token, is_revoked, user_id) values (1, 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJNaWNoYWVsLlBhdGVsIiwiaWF0IjoxNzExMTM5Mzg1LCJleHAiOjE3MTExODI1ODV9.ca6b0zn92mHL7OYuvXxbg-8I6Tr0fIiQ7860pXPXRkU', true, 1);
+insert into jwt_token (id, token, is_revoked, user_id) values (2, 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJNaWNoYWVsLlBhdGVsIiwiaWF0IjoxNzExMTM5MzgyLCJleHAiOjE3MTExODI1ODV9.wRGyQJcx_vJxuypQvpK_rzPFg-lVBfYs7puJwfp3668', false, 1);
+insert into jwt_token (id, token, is_revoked, user_id) values (3, 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJNaWNoYWVsLlBhdGVsIiwiaWF0IjoxNzExMTM5MzgxLCJleHAiOjE3MTExODI1ODV9.TgJW3s_yc6QPjpAjzME_1fgoMEmoObjd_KgcY5iov9s', false, 1);
+
+alter sequence jwt_token_seq restart with (select max(id) + 50 from jwt_token);
+
 insert into training_type (id, training_type) values (1, 'Bodybuilding');
 insert into training_type (id, training_type) values (2, 'CrossFit');
 insert into training_type (id, training_type) values (3, 'Strength Training');

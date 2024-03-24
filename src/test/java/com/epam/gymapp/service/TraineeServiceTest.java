@@ -47,6 +47,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 public class TraineeServiceTest {
@@ -75,6 +76,12 @@ public class TraineeServiceTest {
   @Mock
   private TrainerMapper trainerMapper;
 
+  @Mock
+  private PasswordEncoder passwordEncoder;
+
+  @Mock
+  private JwtService jwtService;
+
   @Test
   void createTrainee_Success() {
     // Given
@@ -92,9 +99,10 @@ public class TraineeServiceTest {
       userUtils.when(() -> UserUtils.buildUsername(any(), anyInt()))
           .thenReturn(createdTrainee.getUser().getUsername());
       userUtils.when(UserUtils::generatePassword)
-          .thenReturn(createdTrainee.getUser().getPassword());
+          .thenReturn(createdTrainee.getUser().getPassword().toCharArray());
+      when(passwordEncoder.encode(any())).thenReturn(createdTrainee.getUser().getPassword());
       when(traineeRepository.save(any())).thenReturn(createdTrainee);
-      when(traineeMapper.toUserCredentialsDto(any())).thenReturn(expectedResult);
+      when(jwtService.generateAndSaveToken(any())).thenReturn(expectedResult.getToken());
 
       UserCredentialsDto result = traineeService.createTrainee(traineeCreateDto);
 
@@ -104,8 +112,9 @@ public class TraineeServiceTest {
       userUtils.verify(() -> UserUtils.getNumberOfAppearances(any()), times(1));
       userUtils.verify(() -> UserUtils.buildUsername(any(), anyInt()), times(1));
       userUtils.verify(UserUtils::generatePassword, times(1));
+      verify(passwordEncoder, times(1)).encode(any());
       verify(traineeRepository, times(1)).save(any());
-      verify(traineeMapper, times(1)).toUserCredentialsDto(any());
+      verify(jwtService, times(1)).generateAndSaveToken(any());
 
       assertThat(result, samePropertyValuesAs(expectedResult));
     }

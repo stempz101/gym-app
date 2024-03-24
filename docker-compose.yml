@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+
+  postgres:
+    container_name: postgres
+    image: postgres:latest
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: gym_db
+    volumes:
+      - gym-volume:/var/lib/postgresql/data
+
+  main-app:
+    container_name: main-app
+    image: stempz/gym-app:1.0.2
+    ports:
+      - '8080:8080'
+    environment:
+      DB_URL: jdbc:postgresql://postgres/gym_db
+      DB_USER: user
+      DB_PASSWORD: pass
+    depends_on:
+      - postgres
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - main-app
+
+volumes:
+  gym-volume:

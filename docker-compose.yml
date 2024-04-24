@@ -14,17 +14,57 @@ services:
     volumes:
       - gym-volume:/var/lib/postgresql/data
 
-  main-app:
-    container_name: main-app
-    image: stempz/gym-app:1.0.2
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-volume:/data
+
+  redisinsight:
+    container_name: redisinsight
+    image: redislabs/redisinsight:latest
+    ports:
+      - '5540:5540'
+
+  discovery-microservice:
+    container_name: discovery-microservice
+    image: stempz/gym-app-discovery-microservice:1.0.0
+    ports:
+      - '8761:8761'
+    environment:
+      DISCOVERY_HOST: discovery-microservice
+
+  main-microservice:
+    container_name: main-microservice
+    image: stempz/gym-app-main-microservice:1.0.0
     ports:
       - '8080:8080'
     environment:
       DB_URL: jdbc:postgresql://postgres/gym_db
       DB_USER: user
       DB_PASSWORD: pass
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      EUREKA_URI: http://discovery-microservice:8761/eureka
     depends_on:
       - postgres
+      - redis
+      - discovery-microservice
+
+  reports-microservice:
+    container_name: reports-microservice
+    image: stempz/gym-app-reports-microservice:1.0.0
+    ports:
+      - '8081:8081'
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      EUREKA_URI: http://discovery-microservice:8761/eureka
+    depends_on:
+      - redis
+      - discovery-microservice
 
   prometheus:
     container_name: prometheus
@@ -32,9 +72,10 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./main-microservice/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     depends_on:
-      - main-app
+      - main-microservice
 
 volumes:
   gym-volume:
+  redis-volume:

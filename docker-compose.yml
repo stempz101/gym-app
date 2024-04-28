@@ -28,9 +28,16 @@ services:
     ports:
       - '5540:5540'
 
+  activemq:
+    container_name: activemq
+    image: rmohr/activemq:latest
+    ports:
+      - '61616:61616'
+      - '8161:8161'
+
   discovery-microservice:
     container_name: discovery-microservice
-    image: stempz/gym-app-discovery-microservice:1.0.0
+    image: stempz/gym-app-discovery-microservice:1.0.1
     ports:
       - '8761:8761'
     environment:
@@ -38,7 +45,7 @@ services:
 
   main-microservice:
     container_name: main-microservice
-    image: stempz/gym-app-main-microservice:1.0.0
+    image: stempz/gym-app-main-microservice:1.0.1
     ports:
       - '8080:8080'
     environment:
@@ -47,23 +54,25 @@ services:
       DB_PASSWORD: pass
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      ACTIVEMQ_URL: tcp://activemq:61616
       EUREKA_URI: http://discovery-microservice:8761/eureka
     depends_on:
       - postgres
       - redis
+      - activemq
       - discovery-microservice
 
   reports-microservice:
     container_name: reports-microservice
-    image: stempz/gym-app-reports-microservice:1.0.0
+    image: stempz/gym-app-reports-microservice:1.0.1
     ports:
       - '8081:8081'
     environment:
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      ACTIVEMQ_URL: tcp://activemq:61616
       EUREKA_URI: http://discovery-microservice:8761/eureka
     depends_on:
       - redis
+      - activemq
       - discovery-microservice
 
   prometheus:

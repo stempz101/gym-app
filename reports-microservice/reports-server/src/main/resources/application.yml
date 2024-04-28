@@ -1,0 +1,55 @@
+server:
+  port: 8081
+spring:
+  application:
+    name: reports-microservice
+  datasource:
+    url: jdbc:h2:mem:reports_db
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+  activemq:
+    broker-url: "${ACTIVEMQ_URL:tcp://localhost:61616}"
+    user: "${ACTIVEMQ_USER:admin}"
+    password: "${ACTIVEMQ_PASSWORD:admin}"
+    packages:
+      trust-all: false
+      trusted: java.util,com.epam.reportsmicroservice.dto
+  jms:
+    pub-sub-domain: false
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: "${EUREKA_URI:http://localhost:8761/eureka}"
+  instance:
+    preferIpAddress: true
+management:
+  endpoint:
+    health:
+      show-details: ALWAYS
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+application:
+  messaging:
+    queue:
+      retrieve-trainer-workload:
+        request: reports.trainer-workload.retrieve-request.queue
+        response: reports.trainer-workload.retrieve-response.queue
+      update-trainer-workload: reports.trainer-workload.update.queue
+  logging:
+    transaction-id:
+      key: "tx.id"
+      value: "DB Transaction Id: [%d]"
+      header: "Transaction-ID"

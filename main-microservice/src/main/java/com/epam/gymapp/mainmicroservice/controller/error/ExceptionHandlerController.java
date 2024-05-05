@@ -5,7 +5,7 @@ import com.epam.gymapp.mainmicroservice.exception.AuthenticationBlockedException
 import com.epam.gymapp.mainmicroservice.exception.ParsingException;
 import com.epam.gymapp.mainmicroservice.exception.TraineeNotFoundException;
 import com.epam.gymapp.mainmicroservice.exception.TrainerNotFoundException;
-import com.epam.gymapp.mainmicroservice.exception.TrainerWorkingHoursUpdateException;
+import com.epam.gymapp.mainmicroservice.exception.TrainerWorkloadUpdateException;
 import com.epam.gymapp.mainmicroservice.exception.UserNotFoundException;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -75,7 +75,7 @@ public class ExceptionHandlerController {
   }
 
   @Hidden
-  @ExceptionHandler(TrainerWorkingHoursUpdateException.class)
+  @ExceptionHandler(TrainerWorkloadUpdateException.class)
   @ResponseStatus(HttpStatus.REQUEST_TIMEOUT)
   public List<ErrorMessageDto> handleTrainerWorkingHoursUpdateException(Exception ex) {
     log.error("handleTrainerWorkingHoursUpdateException: {}", ex.getMessage(), ex);

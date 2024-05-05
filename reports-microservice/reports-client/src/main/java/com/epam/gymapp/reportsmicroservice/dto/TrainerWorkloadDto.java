@@ -20,11 +20,13 @@ public class TrainerWorkloadDto {
   private Month month;
   private Long duration;
 
-  public static TrainerWorkloadDto getFallbackObject(int year, int month, String username) {
+  public static TrainerWorkloadDto getFallbackObject(
+      int year, int month, String firstName, String lastName) {
+
     return TrainerWorkloadDto.builder()
-        .username(username != null && !username.isBlank() ? username : "N/A")
-        .firstName("N/A")
-        .lastName("N/A")
+        .username("N/A")
+        .firstName(firstName != null && !firstName.isBlank() ? firstName : "N/A")
+        .lastName(lastName != null && !lastName.isBlank() ? lastName : "N/A")
         .isActive(false)
         .year(year)
         .month(Month.of(month))

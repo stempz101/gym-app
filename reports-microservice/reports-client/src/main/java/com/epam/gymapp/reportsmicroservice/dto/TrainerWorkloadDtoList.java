@@ -13,8 +13,11 @@ public class TrainerWorkloadDtoList {
 
   private List<TrainerWorkloadDto> items;
 
-  public static TrainerWorkloadDtoList getFallbackList(int year, int month, String username) {
+  public static TrainerWorkloadDtoList getFallbackList(
+      int year, int month, String firstName, String lastName) {
+
     return new TrainerWorkloadDtoList(
-        Collections.singletonList(TrainerWorkloadDto.getFallbackObject(year, month, username)));
+        Collections.singletonList(TrainerWorkloadDto
+            .getFallbackObject(year, month, firstName, lastName)));
   }
 }

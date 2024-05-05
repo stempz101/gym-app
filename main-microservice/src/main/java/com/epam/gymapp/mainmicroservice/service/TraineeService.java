@@ -16,6 +16,7 @@ import com.epam.gymapp.mainmicroservice.model.Trainee;
 import com.epam.gymapp.mainmicroservice.model.Trainer;
 import com.epam.gymapp.mainmicroservice.model.Training;
 import com.epam.gymapp.mainmicroservice.model.User;
+import com.epam.gymapp.mainmicroservice.producer.ReportsProducer;
 import com.epam.gymapp.mainmicroservice.repository.SessionUserRepository;
 import com.epam.gymapp.mainmicroservice.repository.TraineeRepository;
 import com.epam.gymapp.mainmicroservice.repository.TrainerRepository;
@@ -51,7 +52,7 @@ public class TraineeService {
 
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
-  private final TrainerService trainerService;
+  private final ReportsProducer reportsProducer;
 
   @Transactional
   public UserCredentialsDto createTrainee(TraineeCreateDto traineeCreateDto) {
@@ -120,7 +121,11 @@ public class TraineeService {
 
     trainingRepository.deleteByTraineeId(trainee.getId());
     traineeRepository.delete(trainee);
-    trainerService.updateTrainerWorkload(trainerWorkloadUpdateDtos);
+
+    if (!trainerWorkloadUpdateDtos.isEmpty()) {
+      reportsProducer.updateTrainerWorkload(trainerWorkloadUpdateDtos);
+    }
+
     sessionUserRepository.deleteByUsername(trainee.getUser().getUsername());
   }
 

@@ -28,16 +28,13 @@ public class TrainerWorkloadConsumer {
   public TrainerWorkloadDtoList retrieveTrainersWorkloadForMonth(
       @Header(value = "year") int year,
       @Header(value = "month") int month,
-      @Header(value = "username", required = false) String username
+      @Header(value = "firstName", required = false) String firstName,
+      @Header(value = "lastName", required = false) String lastName
   ) {
-    if (username != null && !username.isBlank()) {
-      log.info("Starting to select trainer's workload for certain month (username={}): {}, {}",
-          username, year, Month.of(month));
-    } else {
-      log.info("Starting to select trainers' workload for certain month: {}, {}", year, Month.of(month));
-    }
+    log.info("Starting to select trainers' workload for certain month: year={}, month={}, firstName={}, lastName={}",
+        year, Month.of(month), firstName, lastName);
 
-    return trainerWorkloadService.retrieveTrainersWorkloadForMonth(year, month, username);
+    return trainerWorkloadService.retrieveTrainersWorkloadForMonth(year, month, firstName, lastName);
   }
 
   @JmsListener(destination = "${application.messaging.queue.update-trainer-workload}")

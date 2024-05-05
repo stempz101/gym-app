@@ -3,6 +3,7 @@ package com.epam.gymapp.reportsmicroservice.mapper;
 import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadDto;
 import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadUpdateDto;
 import com.epam.gymapp.reportsmicroservice.model.TrainerWorkload;
+import java.time.Month;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.InjectionStrategy;
 import org.mapstruct.Mapper;
@@ -16,15 +17,21 @@ public interface TrainerWorkloadMapper {
   @Mapping(source = "firstName", target = "firstName")
   @Mapping(source = "lastName", target = "lastName")
   @Mapping(source = "isActive", target = "isActive")
-  @Mapping(target = "year", expression = """
-      java(trainerWorkloadUpdateDto.getTrainingDate().getYear())
-      """)
-  @Mapping(target = "month", expression = """
-      java(trainerWorkloadUpdateDto.getTrainingDate().getMonth())
-      """)
-  @Mapping(source = "trainingDuration", target = "duration")
   TrainerWorkload toTrainerWorkload(TrainerWorkloadUpdateDto trainerWorkloadUpdateDto);
 
+  @BeanMapping(ignoreByDefault = true)
+  @Mapping(source = "username", target = "username")
+  @Mapping(source = "firstName", target = "firstName")
+  @Mapping(source = "lastName", target = "lastName")
   @Mapping(source = "active", target = "isActive")
   TrainerWorkloadDto toTrainerWorkloadDto(TrainerWorkload trainerWorkload);
+
+  default TrainerWorkloadDto toTrainerWorkloadDto(TrainerWorkload trainerWorkload,
+      int year, Month month, long trainingDuration) {
+    TrainerWorkloadDto trainerWorkloadDto = toTrainerWorkloadDto(trainerWorkload);
+    trainerWorkloadDto.setYear(year);
+    trainerWorkloadDto.setMonth(month);
+    trainerWorkloadDto.setDuration(trainingDuration);
+    return trainerWorkloadDto;
+  }
 }

@@ -1,7 +1,6 @@
 package com.epam.gymapp.mainmicroservice.service;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.samePropertyValuesAs;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,6 +37,6 @@ public class TrainingTypeServiceTest {
     // Then
     verify(trainingTypeRepository, times(1)).findAll();
 
-    assertThat(result, samePropertyValuesAs(expectedResult));
+    assertEquals(expectedResult, result);
   }
 }

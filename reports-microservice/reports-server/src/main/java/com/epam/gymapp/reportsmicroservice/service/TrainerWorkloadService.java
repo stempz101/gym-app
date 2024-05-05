@@ -8,8 +8,11 @@ import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadUpdateDtoList;
 import com.epam.gymapp.reportsmicroservice.mapper.TrainerWorkloadMapper;
 import com.epam.gymapp.reportsmicroservice.model.TrainerWorkload;
 import com.epam.gymapp.reportsmicroservice.repository.TrainerWorkloadRepository;
+import com.epam.gymapp.reportsmicroservice.repository.custom.CustomTrainerWorkloadRepository;
 import java.time.Month;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,22 +26,32 @@ public class TrainerWorkloadService {
   private final static Logger log = LoggerFactory.getLogger(TrainerWorkloadService.class);
 
   private final TrainerWorkloadRepository trainerWorkloadRepository;
+  private final CustomTrainerWorkloadRepository customTrainerWorkloadRepository;
 
   private final TrainerWorkloadMapper trainerWorkloadMapper;
 
-  @Transactional(readOnly = true)
-  public TrainerWorkloadDtoList retrieveTrainersWorkloadForMonth(int year, int month, String username) {
-    log.info("Selecting trainers' workload for certain month: {}, {}", year, Month.of(month));
+  public TrainerWorkloadDtoList retrieveTrainersWorkloadForMonth(
+      int year, int month, String firstName, String lastName) {
+    log.info("Selecting trainers' workload for certain month: year={}, month={}, firstName={}, lastName={}",
+        year, Month.of(month), firstName, lastName);
 
-    List<TrainerWorkloadDto> workloadList = trainerWorkloadRepository
-        .findAllByYearAndMonthAndUsername(year, Month.of(month), username)
+    List<TrainerWorkloadDto> workloadList = customTrainerWorkloadRepository
+        .findAllByYearAndMonthAndFirstNameAndLastName(year, Month.of(month), firstName, lastName)
         .stream()
-        .map(trainerWorkloadMapper::toTrainerWorkloadDto)
-        .toList();
+        .flatMap(trainerWorkload -> trainerWorkload.getYears().entrySet().stream()
+            .filter(yearEntry -> yearEntry.getKey() == year)
+            .flatMap(yearEntry -> yearEntry.getValue().entrySet().stream()
+                .filter(monthEntry -> monthEntry.getKey().equals(Month.of(month)))
+                .map(monthEntry -> trainerWorkloadMapper
+                    .toTrainerWorkloadDto(trainerWorkload, yearEntry.getKey(),
+                        monthEntry.getKey(), monthEntry.getValue()))
+            )
+        ).toList();
+
     return new TrainerWorkloadDtoList(workloadList);
   }
 
-  @Transactional
+  @Transactional("mongoTransactionManager")
   public void updateTrainersWorkload(TrainerWorkloadUpdateDtoList updateDtoList) {
     log.info("Updating trainers' workload: {}", updateDtoList);
 
@@ -47,69 +60,51 @@ public class TrainerWorkloadService {
     log.info("Trainers' workload was successfully updated");
   }
 
-  private void updateTrainerWorkload(TrainerWorkloadUpdateDto trainerWorkloadUpdateDto) {
-    if (trainerWorkloadUpdateDto.getActionType().equals(ActionType.ADD)) {
-      addTrainingDuration(trainerWorkloadUpdateDto);
+  private void updateTrainerWorkload(TrainerWorkloadUpdateDto updateDto) {
+    if (updateDto.getActionType().equals(ActionType.ADD)) {
+      addTrainingDuration(updateDto);
     } else {
-      subtractTrainingDuration(trainerWorkloadUpdateDto);
+      subtractTrainingDuration(updateDto);
     }
   }
 
-  private void addTrainingDuration(TrainerWorkloadUpdateDto trainerWorkloadUpdateDto) {
-    log.debug("Adding trainer's (username={}) working time is started",
-        trainerWorkloadUpdateDto.getUsername());
+  private void addTrainingDuration(TrainerWorkloadUpdateDto updateDto) {
+    TrainerWorkload trainerWorkload = trainerWorkloadRepository
+        .findById(updateDto.getUsername())
+        .orElseGet(() -> trainerWorkloadMapper.toTrainerWorkload(updateDto));
 
-    String trainerUsername = trainerWorkloadUpdateDto.getUsername();
-    int trainingYear = trainerWorkloadUpdateDto.getTrainingDate().getYear();
-    Month trainingMonth = trainerWorkloadUpdateDto.getTrainingDate().getMonth();
+    int year = updateDto.getTrainingDate().getYear();
+    Month month = updateDto.getTrainingDate().getMonth();
+    long trainingDuration = updateDto.getTrainingDuration();
 
-    trainerWorkloadRepository.findByUsernameAndYearAndMonth(trainerUsername, trainingYear, trainingMonth)
-        .ifPresentOrElse(trainerRecord -> addTrainingDurationIfExists(trainerRecord,
-                trainerWorkloadUpdateDto),
-            () -> saveNewTrainingRecord(trainerWorkloadUpdateDto));
-  }
+    Map<Integer, Map<Month, Long>> years = trainerWorkload.getYears();
+    Map<Month, Long> months = years.computeIfAbsent(year, key -> new HashMap<>());
+    months.put(month, months.getOrDefault(month, 0L) + trainingDuration);
 
-  private void subtractTrainingDuration(TrainerWorkloadUpdateDto trainerWorkloadUpdateDto) {
-    log.debug("Subtracting trainer's (username={}) working time is started",
-        trainerWorkloadUpdateDto.getUsername());
-
-    String trainerUsername = trainerWorkloadUpdateDto.getUsername();
-    int trainingYear = trainerWorkloadUpdateDto.getTrainingDate().getYear();
-    Month trainingMonth = trainerWorkloadUpdateDto.getTrainingDate().getMonth();
-
-    trainerWorkloadRepository.findByUsernameAndYearAndMonth(trainerUsername, trainingYear, trainingMonth)
-        .ifPresent(trainerRecord -> subtractTrainingDurationIfExists(trainerRecord,
-            trainerWorkloadUpdateDto));
-  }
-
-  private void addTrainingDurationIfExists(TrainerWorkload trainerWorkload,
-      TrainerWorkloadUpdateDto trainerWorkloadUpdateDto) {
-    log.debug("Existing workload found. Adding working hours for trainer (username={})",
-        trainerWorkload.getUsername());
-
-    trainerWorkload.setDuration(trainerWorkload.getDuration() + trainerWorkloadUpdateDto.getTrainingDuration());
     trainerWorkloadRepository.save(trainerWorkload);
   }
 
-  private void saveNewTrainingRecord(TrainerWorkloadUpdateDto trainerWorkloadUpdateDto) {
-    log.debug("Existing workload was not found. Creating new trainer record (username={})",
-        trainerWorkloadUpdateDto.getUsername());
+  private void subtractTrainingDuration(TrainerWorkloadUpdateDto updateDto) {
+    trainerWorkloadRepository.findById(updateDto.getUsername()).ifPresent(trainerWorkload -> {
+      int year = updateDto.getTrainingDate().getYear();
+      Month month = updateDto.getTrainingDate().getMonth();
+      long trainingDuration = updateDto.getTrainingDuration();
 
-    TrainerWorkload trainerWorkload = trainerWorkloadMapper.toTrainerWorkload(trainerWorkloadUpdateDto);
-    trainerWorkloadRepository.save(trainerWorkload);
-  }
+      Map<Integer, Map<Month, Long>> years = trainerWorkload.getYears();
+      years.computeIfPresent(year, (yearKey, months) -> {
+        months.computeIfPresent(month, (monthKey, workloadTrainingDuration) -> {
+          long updatedTrainingDuration = workloadTrainingDuration - trainingDuration;
+          return updatedTrainingDuration > 0 ? updatedTrainingDuration : null;
+        });
 
-  private void subtractTrainingDurationIfExists(TrainerWorkload trainerWorkload,
-      TrainerWorkloadUpdateDto trainerWorkloadUpdateDto) {
-    log.debug("Existing workload found. Subtracting working hours for trainer (username={})",
-        trainerWorkload.getUsername());
+        return months.isEmpty() ? null : months;
+      });
 
-    long updatedDuration = trainerWorkload.getDuration() - trainerWorkloadUpdateDto.getTrainingDuration();
-    if (updatedDuration > 0) {
-      trainerWorkload.setDuration(updatedDuration);
-      trainerWorkloadRepository.save(trainerWorkload);
-    } else {
-      trainerWorkloadRepository.delete(trainerWorkload);
-    }
+      if (years.isEmpty()) {
+        trainerWorkloadRepository.deleteById(trainerWorkload.getUsername());
+      } else {
+        trainerWorkloadRepository.save(trainerWorkload);
+      }
+    });
   }
 }

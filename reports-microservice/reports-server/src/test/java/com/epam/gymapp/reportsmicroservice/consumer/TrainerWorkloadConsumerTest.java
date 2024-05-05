@@ -6,9 +6,11 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.epam.gymapp.reportsmicroservice.config.TestJmsConfiguration;
@@ -31,24 +33,10 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.jms.core.JmsTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
 
 @SpringBootTest
 @Import(TestJmsConfiguration.class)
 public class TrainerWorkloadConsumerTest {
-
-  static GenericContainer<?> activeMQ = new GenericContainer<>("rmohr/activemq:latest")
-      .withExposedPorts(61616);
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    activeMQ.start();
-    registry.add("spring.activemq.broker-url",
-        () -> "tcp://localhost:" + activeMQ.getMappedPort(61616));
-    registry.add("spring.jta.enabled", () -> "false");
-  }
 
   @SpyBean
   private TrainerWorkloadConsumer trainerWorkloadConsumer;
@@ -81,17 +69,18 @@ public class TrainerWorkloadConsumerTest {
     TrainerWorkloadDtoList expectedResult = new TrainerWorkloadDtoList(List.of(trainerWorkloadDto1, trainerWorkloadDto2));
 
     // When
-    when(trainerWorkloadService.retrieveTrainersWorkloadForMonth(anyInt(), anyInt(), any()))
+    when(trainerWorkloadService
+        .retrieveTrainersWorkloadForMonth(year, month, null, null))
         .thenReturn(expectedResult);
 
-    sendMessageToRetrieveTrainerWorkload(year, month, null, correlationID);
+    sendMessageToRetrieveTrainerWorkload(year, month, null, null, correlationID);
     TrainerWorkloadDtoList result = receiveMessageWithTrainerWorkload(correlationID);
 
     // Then
     verify(trainerWorkloadConsumer, times(1))
-        .retrieveTrainersWorkloadForMonth(anyInt(), anyInt(), any());
+        .retrieveTrainersWorkloadForMonth(year, month, null, null);
     verify(trainerWorkloadService, times(1))
-        .retrieveTrainersWorkloadForMonth(anyInt(), anyInt(), any());
+        .retrieveTrainersWorkloadForMonth(year, month, null, null);
 
     assertThat(result, notNullValue());
     assertThat(result.getItems(), hasSize(expectedResult.getItems().size()));
@@ -99,28 +88,30 @@ public class TrainerWorkloadConsumerTest {
   }
 
   @Test
-  void retrieveTrainersWorkloadForMonth_WithUsername_Success() {
+  void retrieveTrainersWorkloadForMonth_WithFirstNameAndLastName_Success() {
     // Given
     int year = 2024;
     int month = 4;
-    String username = TrainerWorkloadTestUtil.TEST_TRAINER_USERNAME_1;
+    String firstName = TrainerWorkloadTestUtil.TEST_TRAINER_FIRST_NAME_1;
+    String lastName = TrainerWorkloadTestUtil.TEST_TRAINER_LAST_NAME_1;
     String correlationID = UUID.randomUUID().toString();
     TrainerWorkloadDto trainerWorkloadDto1 =
         TrainerWorkloadTestUtil.getTrainerWorkloadDto1(2024, 4, 10);
     TrainerWorkloadDtoList expectedResult = new TrainerWorkloadDtoList(Collections.singletonList(trainerWorkloadDto1));
 
     // When
-    when(trainerWorkloadService.retrieveTrainersWorkloadForMonth(anyInt(), anyInt(), any()))
+    when(trainerWorkloadService
+        .retrieveTrainersWorkloadForMonth(year, month, firstName, lastName))
         .thenReturn(expectedResult);
 
-    sendMessageToRetrieveTrainerWorkload(year, month, username, correlationID);
+    sendMessageToRetrieveTrainerWorkload(year, month, firstName, lastName, correlationID);
     TrainerWorkloadDtoList result = receiveMessageWithTrainerWorkload(correlationID);
 
     // Then
     verify(trainerWorkloadConsumer, times(1))
-        .retrieveTrainersWorkloadForMonth(anyInt(), anyInt(), any());
+        .retrieveTrainersWorkloadForMonth(anyInt(), anyInt(), anyString(), anyString());
     verify(trainerWorkloadService, times(1))
-        .retrieveTrainersWorkloadForMonth(anyInt(), anyInt(), any());
+        .retrieveTrainersWorkloadForMonth(anyInt(), anyInt(), anyString(), anyString());
 
     assertThat(result, notNullValue());
     assertThat(result.getItems(), hasSize(expectedResult.getItems().size()));
@@ -128,12 +119,13 @@ public class TrainerWorkloadConsumerTest {
   }
 
   private void sendMessageToRetrieveTrainerWorkload(
-      int year, int month, String username, String correlationID) {
+      int year, int month, String firstName, String lastName, String correlationID) {
     jmsTemplate.send(retrieveTrainerWorkloadRequestQueue, session -> {
       Message message = session.createMessage();
       message.setIntProperty("year", year);
       message.setIntProperty("month", month);
-      message.setStringProperty("username", username);
+      message.setStringProperty("firstName", firstName);
+      message.setStringProperty("lastName", lastName);
       message.setJMSCorrelationID(correlationID);
       return message;
     });
@@ -149,39 +141,33 @@ public class TrainerWorkloadConsumerTest {
   void updateTrainersRecords_Success() throws InterruptedException {
     // Given
     TrainerWorkloadUpdateDto trainerWorkloadUpdateDto1 =
-        TrainerWorkloadTestUtil.getTrainerWorkloadUpdateDto(2024, 4, 10, ActionType.ADD);
+        TrainerWorkloadTestUtil.getTrainerWorkloadUpdateDto1(2024, 4, 10, ActionType.ADD);
     TrainerWorkloadUpdateDto trainerWorkloadUpdateDto2 =
-        TrainerWorkloadTestUtil.getTrainerWorkloadUpdateDto(2025, 5, 60, ActionType.DELETE);
+        TrainerWorkloadTestUtil.getTrainerWorkloadUpdateDto1(2025, 5, 60, ActionType.DELETE);
     TrainerWorkloadUpdateDtoList trainerWorkloadUpdateDtoList =
         new TrainerWorkloadUpdateDtoList(List.of(trainerWorkloadUpdateDto1, trainerWorkloadUpdateDto2));
 
     // When
-    doNothing().when(trainerWorkloadService).updateTrainersWorkload(any());
+    doNothing().when(trainerWorkloadService).updateTrainersWorkload(trainerWorkloadUpdateDtoList);
 
     sendMessageToUpdateTrainerWorkload(trainerWorkloadUpdateDtoList);
 
     Thread.sleep(5000);
 
     // Then
-    verify(trainerWorkloadConsumer, times(1)).updateTrainersWorkload(any());
-    verify(trainerWorkloadService, times(1)).updateTrainersWorkload(any());
+    verify(trainerWorkloadConsumer, times(1))
+        .updateTrainersWorkload(any(TrainerWorkloadUpdateDtoList.class));
+    verify(trainerWorkloadService, times(1))
+        .updateTrainersWorkload(any(TrainerWorkloadUpdateDtoList.class));
   }
 
   @Test
   void updateTrainersRecords_RequiredFieldsAreInvalid_Failure() throws Exception {
     // Given
     TrainerWorkloadUpdateDto trainerWorkloadUpdateDto1 =
-        TrainerWorkloadTestUtil.getTrainerWorkloadUpdateDto(2024, 4, 10, null);
+        new TrainerWorkloadUpdateDto(null, null, null, null, null, null, null);
     TrainerWorkloadUpdateDto trainerWorkloadUpdateDto2 =
-        TrainerWorkloadTestUtil.getTrainerWorkloadUpdateDto(2025, 5, 60, null);
-    trainerWorkloadUpdateDto1.setUsername(null);
-    trainerWorkloadUpdateDto1.setFirstName(null);
-    trainerWorkloadUpdateDto1.setLastName(null);
-    trainerWorkloadUpdateDto1.setIsActive(null);
-    trainerWorkloadUpdateDto2.setIsActive(null);
-    trainerWorkloadUpdateDto2.setTrainingDate(null);
-    trainerWorkloadUpdateDto2.setTrainingDuration(null);
-    trainerWorkloadUpdateDto2.setActionType(null);
+        new TrainerWorkloadUpdateDto(null, null, null, null, null, null, null);
     TrainerWorkloadUpdateDtoList trainerWorkloadUpdateDtoList =
         new TrainerWorkloadUpdateDtoList(List.of(trainerWorkloadUpdateDto1, trainerWorkloadUpdateDto2));
 
@@ -191,8 +177,8 @@ public class TrainerWorkloadConsumerTest {
     Thread.sleep(5000);
 
     // Then
-    verify(trainerWorkloadConsumer, times(0)).updateTrainersWorkload(any());
-    verify(trainerWorkloadService, times(0)).updateTrainersWorkload(any());
+    verifyNoInteractions(trainerWorkloadConsumer);
+    verifyNoInteractions(trainerWorkloadService);
   }
 
   private void sendMessageToUpdateTrainerWorkload(TrainerWorkloadUpdateDtoList trainerWorkloadUpdateDtoList) {

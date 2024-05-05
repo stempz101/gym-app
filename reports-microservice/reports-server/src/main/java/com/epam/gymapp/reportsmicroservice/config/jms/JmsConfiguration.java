@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
+import org.springframework.jms.connection.JmsTransactionManager;
 import org.springframework.jms.support.converter.MappingJackson2MessageConverter;
 import org.springframework.jms.support.converter.MessageConverter;
 import org.springframework.jms.support.converter.MessageType;
@@ -40,14 +41,14 @@ public class JmsConfiguration {
   public DefaultJmsListenerContainerFactory jmsListenerContainerFactory(
       ConnectionFactory connectionFactory,
       MessageConverter jacksonJmsMessageConverter,
-      PlatformTransactionManager transactionManager,
+      PlatformTransactionManager jmsTransactionManager,
       ErrorHandler jmsErrorHandler
   ) {
     CustomJmsListenerContainerFactory factory = new CustomJmsListenerContainerFactory();
 
     factory.setConnectionFactory(connectionFactory);
     factory.setMessageConverter(jacksonJmsMessageConverter);
-    factory.setTransactionManager(transactionManager);
+    factory.setTransactionManager(jmsTransactionManager);
     factory.setErrorHandler(jmsErrorHandler);
     factory.setTransactionIdHeader(transactionIdHeader);
     factory.setTransactionIdKey(transactionIdKey);
@@ -61,5 +62,10 @@ public class JmsConfiguration {
       MDC.remove(transactionIdKey);
       TransactionContextHolder.clearTransactionIdFromContext();
     };
+  }
+
+  @Bean
+  public PlatformTransactionManager jmsTransactionManager(ConnectionFactory connectionFactory) {
+    return new JmsTransactionManager(connectionFactory);
   }
 }

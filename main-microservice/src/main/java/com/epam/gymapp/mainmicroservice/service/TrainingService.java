@@ -8,6 +8,7 @@ import com.epam.gymapp.mainmicroservice.mapper.TrainingMapper;
 import com.epam.gymapp.mainmicroservice.model.Trainee;
 import com.epam.gymapp.mainmicroservice.model.Trainer;
 import com.epam.gymapp.mainmicroservice.model.Training;
+import com.epam.gymapp.mainmicroservice.producer.ReportsProducer;
 import com.epam.gymapp.mainmicroservice.repository.TraineeRepository;
 import com.epam.gymapp.mainmicroservice.repository.TrainerRepository;
 import com.epam.gymapp.mainmicroservice.repository.TrainingRepository;
@@ -33,7 +34,7 @@ public class TrainingService {
   private final TraineeRepository traineeRepository;
   private final TrainerRepository trainerRepository;
 
-  private final TrainerService trainerService;
+  private final ReportsProducer reportsProducer;
 
   private final TrainingMapper trainingMapper;
 
@@ -63,7 +64,7 @@ public class TrainingService {
 
     training = trainingRepository.save(training);
 
-    trainerService.updateTrainerWorkload(training, ActionType.ADD);
+    reportsProducer.updateTrainerWorkload(training, ActionType.ADD);
 
     log.info("Training added successfully: {}", training);
   }

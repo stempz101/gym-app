@@ -12,7 +12,6 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.epam.gymapp.mainmicroservice.GymAppApplication;
 import com.epam.gymapp.mainmicroservice.config.TestHibernateConfiguration;
 import com.epam.gymapp.mainmicroservice.model.Trainer;
 import com.epam.gymapp.mainmicroservice.test.utils.TrainerTestUtil;
@@ -35,7 +34,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 @ExtendWith(SpringExtension.class)
 @DataJpaTest(properties = {"spring.jpa.hibernate.ddl-auto=create-drop"})
-@ContextConfiguration(classes = {GymAppApplication.class, TestHibernateConfiguration.class})
+@ContextConfiguration(classes = TestHibernateConfiguration.class)
 @TestMethodOrder(OrderAnnotation.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class TrainerRepositoryTest {

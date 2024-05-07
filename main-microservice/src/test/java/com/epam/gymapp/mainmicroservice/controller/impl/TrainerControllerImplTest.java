@@ -1282,7 +1282,8 @@ public class TrainerControllerImplTest {
     // Given
     int year = 2024;
     int month = 4;
-    String username = UserTestUtil.TEST_TRAINER_USER_USERNAME_1;
+    String firstName = UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_1;
+    String lastName = UserTestUtil.TEST_TRAINER_USER_LAST_NAME_1;
     TrainerWorkloadDto trainerWorkloadDto1 = TrainerTestUtil
         .getTrainerWorkloadDto1(2024, 4, 120);
     List<TrainerWorkloadDto> expectedResult = Collections.singletonList(trainerWorkloadDto1);
@@ -1293,13 +1294,14 @@ public class TrainerControllerImplTest {
     // When
     when(sessionUserRepository.findById(any())).thenReturn(Optional.of(sessionUser));
     when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(user));
-    when(trainerService.retrieveTrainersWorkloadForMonth(anyInt(), anyInt(), any()))
+    when(trainerService.retrieveTrainersWorkloadForMonth(anyInt(), anyInt(), any(), any()))
         .thenReturn(expectedResult);
 
     ResultActions result = mockMvc.perform(get("/api/trainers/workload")
         .param("year", String.valueOf(year))
         .param("month", String.valueOf(month))
-        .param("username", username)
+        .param("firstName", firstName)
+        .param("lastName", lastName)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then
@@ -1351,13 +1353,15 @@ public class TrainerControllerImplTest {
     // Given
     int year = 2024;
     int month = 4;
-    String username = UserTestUtil.TEST_TRAINER_USER_USERNAME_1;
+    String firstName = UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_1;
+    String lastName = UserTestUtil.TEST_TRAINER_USER_LAST_NAME_1;
 
     // When
     ResultActions result = mockMvc.perform(get("/api/trainers/workload")
         .param("year", String.valueOf(year))
         .param("month", String.valueOf(month))
-        .param("username", username));
+        .param("firstName", firstName)
+        .param("lastName", lastName));
 
     // Then
     result
@@ -1375,10 +1379,10 @@ public class TrainerControllerImplTest {
     // Given
     int year = 2024;
     int month = 4;
-    String username = UserTestUtil.TEST_TRAINER_USER_USERNAME_1;
+    String firstName = UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_1;
+    String lastName = UserTestUtil.TEST_TRAINER_USER_LAST_NAME_1;
     User user = UserTestUtil.getTraineeUser1();
     String token = jwtTokenTestUtil.generateToken(user);
-    SessionUser sessionUser = new SessionUser(user.getUsername(), user.getCreatedAt());
 
     // When
     when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(user));
@@ -1387,7 +1391,8 @@ public class TrainerControllerImplTest {
     ResultActions result = mockMvc.perform(get("/api/trainers/workload")
         .param("year", String.valueOf(year))
         .param("month", String.valueOf(month))
-        .param("username", username)
+        .param("firstName", firstName)
+        .param("lastName", lastName)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then
@@ -1406,14 +1411,16 @@ public class TrainerControllerImplTest {
     // Given
     int year = 2024;
     int month = 4;
-    String username = UserTestUtil.TEST_TRAINER_USER_USERNAME_1;
+    String firstName = UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_1;
+    String lastName = UserTestUtil.TEST_TRAINER_USER_LAST_NAME_1;
     String token = jwtTokenTestUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
 
     // When
     ResultActions result = mockMvc.perform(get("/api/trainers/workload")
         .param("year", String.valueOf(year))
         .param("month", String.valueOf(month))
-        .param("username", username)
+        .param("firstName", firstName)
+        .param("lastName", lastName)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then
@@ -1432,7 +1439,8 @@ public class TrainerControllerImplTest {
     // Given
     int year = 2024;
     int month = 4;
-    String username = UserTestUtil.TEST_TRAINER_USER_USERNAME_1;
+    String firstName = UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_1;
+    String lastName = UserTestUtil.TEST_TRAINER_USER_LAST_NAME_1;
     User user = UserTestUtil.getTraineeUser1();
     String token = jwtTokenTestUtil.generateToken(user);
     SessionUser sessionUser = new SessionUser(user.getUsername(), user.getCreatedAt());
@@ -1440,13 +1448,14 @@ public class TrainerControllerImplTest {
     // When
     when(sessionUserRepository.findById(any())).thenReturn(Optional.of(sessionUser));
     when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(user));
-    when(trainerService.retrieveTrainersWorkloadForMonth(anyInt(), anyInt(), any()))
+    when(trainerService.retrieveTrainersWorkloadForMonth(anyInt(), anyInt(), any(), any()))
         .thenThrow(RuntimeException.class);
 
     ResultActions result = mockMvc.perform(get("/api/trainers/workload")
         .param("year", String.valueOf(year))
         .param("month", String.valueOf(month))
-        .param("username", username)
+        .param("firstName", firstName)
+        .param("lastName", lastName)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then

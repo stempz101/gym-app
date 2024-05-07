@@ -19,6 +19,7 @@ import com.epam.gymapp.mainmicroservice.dto.TrainingCreateDto;
 import com.epam.gymapp.mainmicroservice.dto.TrainingInfoDto;
 import com.epam.gymapp.mainmicroservice.exception.TraineeNotFoundException;
 import com.epam.gymapp.mainmicroservice.exception.TrainerNotFoundException;
+import com.epam.gymapp.mainmicroservice.exception.TrainerWorkloadUpdateException;
 import com.epam.gymapp.mainmicroservice.model.SessionUser;
 import com.epam.gymapp.mainmicroservice.model.User;
 import com.epam.gymapp.mainmicroservice.repository.SessionUserRepository;
@@ -616,6 +617,36 @@ public class TrainingControllerImplTest {
             jsonPath("$[0].message")
                 .value(String.format("Trainer with username '%s' is not found",
                     trainingCreateDto.getTrainerUsername()))
+        );
+  }
+
+  @Test
+  void addTraining_TrainerWorkloadUpdateFailed_Failure() throws Exception {
+    // Given
+    TrainingCreateDto trainingCreateDto = TrainingTestUtil.getTrainingCreateDto1();
+    User user = UserTestUtil.getTraineeUser1();
+    String token = jwtTokenTestUtil.generateToken(user);
+    SessionUser sessionUser = new SessionUser(user.getUsername(), user.getCreatedAt());
+
+    // When
+    when(sessionUserRepository.findById(any())).thenReturn(Optional.of(sessionUser));
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(user));
+    doThrow(new TrainerWorkloadUpdateException()).when(trainingService).addTraining(any());
+
+    ResultActions result = mockMvc.perform(post("/api/trainings")
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(trainingCreateDto)));
+
+    // Then
+    result
+        .andDo(print())
+        .andExpectAll(
+            status().isRequestTimeout(),
+            content().contentType(MediaType.APPLICATION_JSON),
+            jsonPath("$").value(hasSize(1)),
+            jsonPath("$[0].message")
+                .value("Failed to update trainers' workload. Please, try again after some time!")
         );
   }
 

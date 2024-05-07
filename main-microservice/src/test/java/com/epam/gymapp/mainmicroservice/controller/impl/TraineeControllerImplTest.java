@@ -23,6 +23,7 @@ import com.epam.gymapp.mainmicroservice.dto.TrainerShortInfoDto;
 import com.epam.gymapp.mainmicroservice.dto.TrainingInfoDto;
 import com.epam.gymapp.mainmicroservice.exception.TraineeNotFoundException;
 import com.epam.gymapp.mainmicroservice.exception.TrainerNotFoundException;
+import com.epam.gymapp.mainmicroservice.exception.TrainerWorkloadUpdateException;
 import com.epam.gymapp.mainmicroservice.model.SessionUser;
 import com.epam.gymapp.mainmicroservice.model.User;
 import com.epam.gymapp.mainmicroservice.repository.SessionUserRepository;
@@ -1020,6 +1021,34 @@ public class TraineeControllerImplTest {
             jsonPath("$").value(hasSize(1)),
             jsonPath("$[0].message")
                 .value(String.format("Trainee with username '%s' is not found", traineeUsername))
+        );
+  }
+
+  @Test
+  void deleteTrainee_TrainerWorkloadUpdateFailed_Failure() throws Exception {
+    // Given
+    String traineeUsername = UserTestUtil.TEST_TRAINEE_USER_USERNAME_1;
+    User user = UserTestUtil.getTraineeUser1();
+    String token = jwtTokenTestUtil.generateToken(user);
+    SessionUser sessionUser = new SessionUser(user.getUsername(), user.getCreatedAt());
+
+    // When
+    when(sessionUserRepository.findById(any())).thenReturn(Optional.of(sessionUser));
+    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(user));
+    doThrow(new TrainerWorkloadUpdateException()).when(traineeService).deleteTrainee(any());
+
+    ResultActions result = mockMvc.perform(delete("/api/trainees/" + traineeUsername)
+        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
+
+    // Then
+    result
+        .andDo(print())
+        .andExpectAll(
+            status().isRequestTimeout(),
+            content().contentType(MediaType.APPLICATION_JSON),
+            jsonPath("$").value(hasSize(1)),
+            jsonPath("$[0].message")
+                .value("Failed to update trainers' workload. Please, try again after some time!")
         );
   }
 

@@ -3,7 +3,7 @@ package com.epam.gymapp.mainmicroservice.service;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.samePropertyValuesAs;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -29,6 +29,7 @@ import com.epam.gymapp.mainmicroservice.model.Trainee;
 import com.epam.gymapp.mainmicroservice.model.Trainer;
 import com.epam.gymapp.mainmicroservice.model.Training;
 import com.epam.gymapp.mainmicroservice.model.custom.TrainerWorkload;
+import com.epam.gymapp.mainmicroservice.producer.ReportsProducer;
 import com.epam.gymapp.mainmicroservice.repository.SessionUserRepository;
 import com.epam.gymapp.mainmicroservice.repository.TraineeRepository;
 import com.epam.gymapp.mainmicroservice.repository.TrainerRepository;
@@ -89,7 +90,7 @@ public class TraineeServiceTest {
   private JwtService jwtService;
 
   @Mock
-  private TrainerService trainerService;
+  private ReportsProducer reportsProducer;
 
   @Test
   void createTrainee_Success() {
@@ -126,7 +127,7 @@ public class TraineeServiceTest {
       verify(traineeRepository, times(1)).save(any());
       verify(jwtService, times(1)).generateAndSaveToken(any());
 
-      assertThat(result, samePropertyValuesAs(expectedResult));
+      assertEquals(expectedResult, result);
     }
   }
 
@@ -171,7 +172,7 @@ public class TraineeServiceTest {
     verify(traineeRepository, times(1)).findByUsername(any());
     verify(traineeMapper, times(1)).toTraineeInfoDto(any());
 
-    assertThat(result, samePropertyValuesAs(expectedResult));
+    assertEquals(expectedResult, result);
   }
 
   @Test
@@ -208,7 +209,7 @@ public class TraineeServiceTest {
     verify(traineeRepository, times(1)).save(any());
     verify(traineeMapper, times(1)).toTraineeInfoDtoAfterUpdate(any());
 
-    assertThat(result, samePropertyValuesAs(expectedResult));
+    assertEquals(expectedResult, result);
   }
 
   @Test
@@ -236,7 +237,7 @@ public class TraineeServiceTest {
         .thenReturn(Collections.singletonList(trainerWorkload));
     doNothing().when(trainingRepository).deleteByTraineeId(any());
     doNothing().when(traineeRepository).delete(any());
-    doNothing().when(trainerService).updateTrainerWorkload(any());
+    doNothing().when(reportsProducer).updateTrainerWorkload(any());
     doNothing().when(sessionUserRepository).deleteByUsername(any());
 
     traineeService.deleteTrainee(trainee.getUser().getUsername());
@@ -247,7 +248,7 @@ public class TraineeServiceTest {
         .findTrainersWorkloadByTraineeUsernameAfterDate(any(), any());
     verify(trainingRepository, times(1)).deleteByTraineeId(any());
     verify(traineeRepository, times(1)).delete(any());
-    verify(trainerService, times(1)).updateTrainerWorkload(any());
+    verify(reportsProducer, times(1)).updateTrainerWorkload(any());
     verify(sessionUserRepository, times(1)).deleteByUsername(any());
   }
 

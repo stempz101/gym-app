@@ -1,9 +1,9 @@
-package com.epam.gymapp.mainmicroservice.service;
+package com.epam.gymapp.mainmicroservice.producer;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -13,7 +13,8 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.epam.gymapp.mainmicroservice.exception.TrainerWorkingHoursUpdateException;
+import com.epam.gymapp.mainmicroservice.config.TestJmsConfiguration;
+import com.epam.gymapp.mainmicroservice.exception.TrainerWorkloadUpdateException;
 import com.epam.gymapp.mainmicroservice.model.Training;
 import com.epam.gymapp.mainmicroservice.test.utils.TrainerTestUtil;
 import com.epam.gymapp.mainmicroservice.test.utils.TrainingTestUtil;
@@ -35,26 +36,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.jms.core.JmsTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
 
 @SpringBootTest
-public class TrainerServiceIntegrationTest {
-
-  static GenericContainer<?> activeMQ = new GenericContainer<>("rmohr/activemq:latest")
-      .withExposedPorts(61616);
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    activeMQ.start();
-    registry.add("spring.activemq.broker-url",
-        () -> "tcp://localhost:" + activeMQ.getMappedPort(61616));
-  }
+@Import(TestJmsConfiguration.class)
+public class ReportsProducerTest {
 
   @Autowired
-  private TrainerService trainerService;
+  private ReportsProducer reportsProducer;
 
   @SpyBean
   private JmsTemplate jmsTemplate;
@@ -92,8 +82,8 @@ public class TrainerServiceIntegrationTest {
             return message;
           });
 
-      List<TrainerWorkloadDto> result = trainerService
-          .retrieveTrainersWorkloadForMonth(year, month, null);
+      List<TrainerWorkloadDto> result = reportsProducer
+          .retrieveTrainersWorkloadForMonth(year, month, null, null);
 
       // Then
       assertThat(result, hasSize(expectedResult.size()));
@@ -102,11 +92,12 @@ public class TrainerServiceIntegrationTest {
   }
 
   @Test
-  void retrieveTrainersWorkloadForMonth_WithUsername_Success() {
+  void retrieveTrainersWorkloadForMonth_WithFirstNameAndLastName_Success() {
     // Given
     int year = 2024;
     int month = 4;
-    String username = UserTestUtil.TEST_TRAINER_USER_USERNAME_1;
+    String firstName = UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_1;
+    String lastName = UserTestUtil.TEST_TRAINER_USER_LAST_NAME_1;
     TrainerWorkloadDto trainerWorkloadDto1 = TrainerTestUtil
         .getTrainerWorkloadDto1(2024, 4, 120);
     UUID correlationId = UUID.randomUUID();
@@ -122,8 +113,8 @@ public class TrainerServiceIntegrationTest {
             return message;
           });
 
-      List<TrainerWorkloadDto> result = trainerService
-          .retrieveTrainersWorkloadForMonth(year, month, username);
+      List<TrainerWorkloadDto> result = reportsProducer
+          .retrieveTrainersWorkloadForMonth(year, month, firstName, lastName);
 
       // Then
       assertThat(result, hasSize(expectedResult.size()));
@@ -136,7 +127,8 @@ public class TrainerServiceIntegrationTest {
     // Given
     int year = 2024;
     int month = 4;
-    TrainerWorkloadDto fallbackObject = TrainerWorkloadDto.getFallbackObject(year, month, null);
+    TrainerWorkloadDto fallbackObject = TrainerWorkloadDto
+        .getFallbackObject(year, month, null, null);
     UUID correlationId = UUID.randomUUID();
     List<TrainerWorkloadDto> expectedResult = Collections.singletonList(fallbackObject);
 
@@ -145,8 +137,8 @@ public class TrainerServiceIntegrationTest {
       uuidUtils.when(UUID::randomUUID).thenReturn(correlationId);
       doReturn(null).when(jmsTemplate).receiveSelectedAndConvert(anyString(), anyString());
 
-      List<TrainerWorkloadDto> result = trainerService
-          .retrieveTrainersWorkloadForMonth(year, month, null);
+      List<TrainerWorkloadDto> result = reportsProducer
+          .retrieveTrainersWorkloadForMonth(year, month, null, null);
 
       // Then
       assertThat(result, hasSize(expectedResult.size()));
@@ -159,16 +151,18 @@ public class TrainerServiceIntegrationTest {
     // Given
     int year = 2024;
     int month = 4;
-    String username = UserTestUtil.TEST_TRAINER_USER_USERNAME_1;
-    TrainerWorkloadDto fallbackObject = TrainerWorkloadDto.getFallbackObject(year, month, username);
+    String firstName = UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_1;
+    String lastName = UserTestUtil.TEST_TRAINER_USER_LAST_NAME_1;
+    TrainerWorkloadDto fallbackObject = TrainerWorkloadDto
+        .getFallbackObject(year, month, firstName, lastName);
     List<TrainerWorkloadDto> expectedResult = Collections.singletonList(fallbackObject);
 
     // When
     doThrow(RuntimeException.class).when(jmsTemplate).send(anyString(), any());
 
     for (int i = 0; i < 3; i++) {
-      List<TrainerWorkloadDto> result = trainerService
-          .retrieveTrainersWorkloadForMonth(year, month, username);
+      List<TrainerWorkloadDto> result = reportsProducer
+          .retrieveTrainersWorkloadForMonth(year, month, firstName, lastName);
 
       // Then
       assertThat(result, hasSize(expectedResult.size()));
@@ -177,9 +171,9 @@ public class TrainerServiceIntegrationTest {
       CircuitBreaker circuitBreaker = circuitBreakerRegistry
           .circuitBreaker("reportsMicroserviceCircuitBreaker");
       if (i < 2) {
-        assertSame(State.CLOSED, circuitBreaker.getState());
+        assertEquals(State.CLOSED, circuitBreaker.getState());
       } else {
-        assertSame(State.OPEN, circuitBreaker.getState());
+        assertEquals(State.OPEN, circuitBreaker.getState());
       }
     }
   }
@@ -191,7 +185,7 @@ public class TrainerServiceIntegrationTest {
     Training training = TrainingTestUtil.getTraining1();
 
     // When
-    trainerService.updateTrainerWorkload(training, ActionType.ADD);
+    reportsProducer.updateTrainerWorkload(training, ActionType.ADD);
 
     // Then
     verify(jmsTemplate, times(1)).convertAndSend(anyString(), any(), any());
@@ -207,15 +201,15 @@ public class TrainerServiceIntegrationTest {
 
     // Then
     for (int i = 0; i < 3; i++) {
-      assertThrows(TrainerWorkingHoursUpdateException.class,
-          () -> trainerService.updateTrainerWorkload(training, ActionType.ADD));
+      assertThrows(TrainerWorkloadUpdateException.class,
+          () -> reportsProducer.updateTrainerWorkload(training, ActionType.ADD));
 
       CircuitBreaker circuitBreaker = circuitBreakerRegistry
           .circuitBreaker("reportsMicroserviceCircuitBreaker");
       if (i < 2) {
-        assertSame(State.CLOSED, circuitBreaker.getState());
+        assertEquals(State.CLOSED, circuitBreaker.getState());
       } else {
-        assertSame(State.OPEN, circuitBreaker.getState());
+        assertEquals(State.OPEN, circuitBreaker.getState());
       }
     }
   }
@@ -227,7 +221,7 @@ public class TrainerServiceIntegrationTest {
         Collections.singletonList(TrainerTestUtil.getTrainerWorkloadUpdateDto1(ActionType.ADD));
 
     // When
-    trainerService.updateTrainerWorkload(trainerWorkloadUpdateDtos);
+    reportsProducer.updateTrainerWorkload(trainerWorkloadUpdateDtos);
 
     // Then
     verify(jmsTemplate, times(1)).convertAndSend(anyString(), any(), any());
@@ -244,15 +238,15 @@ public class TrainerServiceIntegrationTest {
 
     // Then
     for (int i = 0; i < 3; i++) {
-      assertThrows(TrainerWorkingHoursUpdateException.class,
-          () -> trainerService.updateTrainerWorkload(trainerWorkloadUpdateDtos));
+      assertThrows(TrainerWorkloadUpdateException.class,
+          () -> reportsProducer.updateTrainerWorkload(trainerWorkloadUpdateDtos));
 
       CircuitBreaker circuitBreaker = circuitBreakerRegistry
           .circuitBreaker("reportsMicroserviceCircuitBreaker");
       if (i < 2) {
-        assertSame(State.CLOSED, circuitBreaker.getState());
+        assertEquals(State.CLOSED, circuitBreaker.getState());
       } else {
-        assertSame(State.OPEN, circuitBreaker.getState());
+        assertEquals(State.OPEN, circuitBreaker.getState());
       }
     }
   }

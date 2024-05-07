@@ -1,52 +1,60 @@
 package com.epam.gymapp.reportsmicroservice.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.time.Month;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "trainer_workload")
+@Document
+@Data
 @Builder
-@Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class TrainerWorkload {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.AUTO)
-  private Long id;
-
-  @Column(name = "username", nullable = false)
   private String username;
 
-  @Column(name = "first_name", nullable = false)
+  @Indexed
   private String firstName;
 
-  @Column(name = "last_name", nullable = false)
+  @Indexed
   private String lastName;
 
-  @Column(name = "is_active", nullable = false)
   private boolean isActive;
 
-  @Column(name = "training_year", nullable = false)
-  private Integer year;
+  private Map<Integer, Map<Month, Long>> years;
 
-  @Column(name = "training_month", nullable = false)
-  @Enumerated(EnumType.STRING)
-  private Month month;
+  public Map<Integer, Map<Month, Long>> getYears() {
+    if (years == null) {
+      years = new HashMap<>();
+    }
+    return years;
+  }
 
-  @Column(name = "training_duration", nullable = false)
-  private Long duration;
+  @Override
+  public boolean equals(Object object) {
+    if (this == object) {
+      return true;
+    }
+    if (object == null || getClass() != object.getClass()) {
+      return false;
+    }
+    TrainerWorkload that = (TrainerWorkload) object;
+    return isActive == that.isActive && Objects.equals(username, that.username)
+        && Objects.equals(firstName, that.firstName) && Objects.equals(lastName,
+        that.lastName) && Objects.equals(years, that.years);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(username, firstName, lastName, isActive, years);
+  }
 }

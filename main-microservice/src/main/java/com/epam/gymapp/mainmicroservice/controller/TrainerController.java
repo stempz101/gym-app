@@ -176,5 +176,6 @@ public interface TrainerController {
   List<TrainerWorkloadDto> retrieveTrainersWorkloadForMonth(
       @RequestParam(name = "year") int year,
       @RequestParam(name = "month") int month,
-      @RequestParam(name = "username", required = false) String username);
+      @RequestParam(name = "firstName", required = false) String firstName,
+      @RequestParam(name = "lastName", required = false) String lastName);
 }

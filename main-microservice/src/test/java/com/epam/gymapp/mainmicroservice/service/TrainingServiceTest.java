@@ -18,6 +18,7 @@ import com.epam.gymapp.mainmicroservice.mapper.TrainingMapper;
 import com.epam.gymapp.mainmicroservice.model.Trainee;
 import com.epam.gymapp.mainmicroservice.model.Trainer;
 import com.epam.gymapp.mainmicroservice.model.Training;
+import com.epam.gymapp.mainmicroservice.producer.ReportsProducer;
 import com.epam.gymapp.mainmicroservice.repository.TraineeRepository;
 import com.epam.gymapp.mainmicroservice.repository.TrainerRepository;
 import com.epam.gymapp.mainmicroservice.repository.TrainingRepository;
@@ -48,7 +49,7 @@ public class TrainingServiceTest {
   private TrainerRepository trainerRepository;
 
   @Mock
-  private TrainerService trainerService;
+  private ReportsProducer reportsProducer;
 
   @Mock
   private TrainingMapper trainingMapper;
@@ -67,7 +68,7 @@ public class TrainingServiceTest {
     when(trainerRepository.findByUsername(any())).thenReturn(Optional.of(trainer));
     when(trainingMapper.toTraining(any())).thenReturn(mappedTraining);
     when(trainingRepository.save(any())).thenReturn(createdTraining);
-    doNothing().when(trainerService).updateTrainerWorkload(any(), any());
+    doNothing().when(reportsProducer).updateTrainerWorkload(any(), any());
 
     trainingService.addTraining(trainingCreateDto);
 
@@ -76,7 +77,7 @@ public class TrainingServiceTest {
     verify(trainerRepository, times(1)).findByUsername(any());
     verify(trainingMapper, times(1)).toTraining(any());
     verify(trainingRepository, times(1)).save(any());
-    verify(trainerService, times(1)).updateTrainerWorkload(any(), any());
+    verify(reportsProducer, times(1)).updateTrainerWorkload(any(), any());
   }
 
   @Test

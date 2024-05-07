@@ -4,7 +4,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
-import static org.hamcrest.Matchers.samePropertyValuesAs;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -67,7 +67,7 @@ public class SessionUserRepositoryTest {
 
     // Then
     SessionUser result = redisTemplate.opsForValue().get(id);
-    assertThat(result, samePropertyValuesAs(sessionUser));
+    assertEquals(sessionUser, result);
   }
 
   @Test

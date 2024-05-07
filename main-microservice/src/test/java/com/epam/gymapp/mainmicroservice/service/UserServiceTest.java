@@ -1,7 +1,6 @@
 package com.epam.gymapp.mainmicroservice.service;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.samePropertyValuesAs;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -67,7 +66,7 @@ public class UserServiceTest {
     verify(authentication, times(1)).getPrincipal();
     verify(jwtService, times(1)).generateAndSaveToken(any());
 
-    assertThat(result, samePropertyValuesAs(expectedResult));
+    assertEquals(expectedResult, result);
   }
 
   @Test

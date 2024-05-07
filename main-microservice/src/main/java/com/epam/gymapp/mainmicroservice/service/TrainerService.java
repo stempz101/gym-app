@@ -7,36 +7,23 @@ import com.epam.gymapp.mainmicroservice.dto.TrainerUpdateDto;
 import com.epam.gymapp.mainmicroservice.dto.TrainingInfoDto;
 import com.epam.gymapp.mainmicroservice.dto.UserCredentialsDto;
 import com.epam.gymapp.mainmicroservice.exception.TrainerNotFoundException;
-import com.epam.gymapp.mainmicroservice.exception.TrainerWorkingHoursUpdateException;
 import com.epam.gymapp.mainmicroservice.mapper.TrainerMapper;
 import com.epam.gymapp.mainmicroservice.mapper.TrainingMapper;
 import com.epam.gymapp.mainmicroservice.model.Trainer;
-import com.epam.gymapp.mainmicroservice.model.Training;
 import com.epam.gymapp.mainmicroservice.model.User;
+import com.epam.gymapp.mainmicroservice.producer.ReportsProducer;
 import com.epam.gymapp.mainmicroservice.repository.TrainerRepository;
 import com.epam.gymapp.mainmicroservice.repository.TrainingRepository;
 import com.epam.gymapp.mainmicroservice.repository.TrainingTypeRepository;
 import com.epam.gymapp.mainmicroservice.repository.UserRepository;
 import com.epam.gymapp.mainmicroservice.utils.UserUtils;
 import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadDto;
-import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadDtoList;
-import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadUpdateDto;
-import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadUpdateDto.ActionType;
-import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadUpdateDtoList;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.retry.annotation.Retry;
-import jakarta.jms.Message;
 import java.time.LocalDate;
 import java.time.Month;
-import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.jms.core.JmsTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,22 +44,7 @@ public class TrainerService {
 
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
-  private final JmsTemplate jmsTemplate;
-
-  @Value("${application.logging.transaction-id.key}")
-  private String transactionIdKey;
-
-  @Value("${application.logging.transaction-id.header}")
-  private String transactionIdHeader;
-
-  @Value("${application.messaging.queue.retrieve-trainer-workload.request}")
-  private String retrieveTrainerWorkloadRequestQueue;
-
-  @Value("${application.messaging.queue.retrieve-trainer-workload.response}")
-  private String retrieveTrainerWorkloadResponseQueue;
-
-  @Value("${application.messaging.queue.update-trainer-workload}")
-  private String updateTrainerWorkloadQueue;
+  private final ReportsProducer reportsProducer;
 
   @Transactional
   public UserCredentialsDto createTrainer(TrainerCreateDto trainerCreateDto) {
@@ -160,65 +132,12 @@ public class TrainerService {
         .ifPresent(trainer::setSpecialization);
   }
 
-  @Retry(name = "reportsMicroserviceRetry")
-  @CircuitBreaker(name = "reportsMicroserviceCircuitBreaker",
-      fallbackMethod = "retrieveTrainersWorkloadForMonthFailure")
   public List<TrainerWorkloadDto> retrieveTrainersWorkloadForMonth(
-      int year, int month, String username) {
+      int year, int month, String firstName, String lastName) {
+
     log.debug("Sending a request to retrieve trainers' workload for certain month: {}, {}",
         year, Month.of(month));
 
-    String correlationID = UUID.randomUUID().toString();
-    jmsTemplate.send(retrieveTrainerWorkloadRequestQueue, session -> {
-      Message message = session.createMessage();
-      message.setIntProperty("year", year);
-      message.setIntProperty("month", month);
-      message.setStringProperty("username", username);
-      message.setJMSCorrelationID(correlationID);
-      return message;
-    });
-
-    TrainerWorkloadDtoList response = (TrainerWorkloadDtoList) jmsTemplate
-        .receiveSelectedAndConvert(
-            retrieveTrainerWorkloadResponseQueue,
-            String.format("JMSCorrelationID = '%s'", correlationID)
-        );
-
-    return response != null
-        ? response.getItems()
-        : TrainerWorkloadDtoList.getFallbackList(year, month, username).getItems();
-  }
-
-  public List<TrainerWorkloadDto> retrieveTrainersWorkloadForMonthFailure(
-      int year, int month, String username, Exception ex) {
-    return TrainerWorkloadDtoList.getFallbackList(year, month, username).getItems();
-  }
-
-  @Retry(name = "reportsMicroserviceRetry")
-  @CircuitBreaker(name = "reportsMicroserviceCircuitBreaker",
-      fallbackMethod = "updateTrainerWorkloadFailure")
-  public void updateTrainerWorkload(Training training, ActionType actionType) {
-    TrainerWorkloadUpdateDto trainerWorkloadUpdateDto =
-        trainerMapper.toTrainerWorkloadUpdateDto(training, actionType);
-
-    updateTrainerWorkload(Collections.singletonList(trainerWorkloadUpdateDto));
-  }
-
-  @Retry(name = "reportsMicroserviceRetry")
-  @CircuitBreaker(name = "reportsMicroserviceCircuitBreaker",
-      fallbackMethod = "updateTrainerWorkloadFailure")
-  public void updateTrainerWorkload(List<TrainerWorkloadUpdateDto> trainerWorkloadUpdateDtos) {
-    log.debug("Sending a request to update trainers' workload");
-
-    jmsTemplate.convertAndSend(updateTrainerWorkloadQueue,
-        new TrainerWorkloadUpdateDtoList(trainerWorkloadUpdateDtos),
-        message -> {
-          message.setStringProperty(transactionIdHeader, MDC.get(transactionIdKey));
-          return message;
-        });
-  }
-
-  public void updateTrainerWorkloadFailure(Exception ex) {
-    throw new TrainerWorkingHoursUpdateException();
+    return reportsProducer.retrieveTrainersWorkloadForMonth(year, month, firstName, lastName);
   }
 }

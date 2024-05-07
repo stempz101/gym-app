@@ -60,14 +60,12 @@ public class TrainerControllerImpl implements TrainerController {
   }
 
   @Override
-  public List<TrainerWorkloadDto> retrieveTrainersWorkloadForMonth(int year, int month, String username) {
-    if (username != null && !username.isBlank()) {
-      log.info("Starting to select trainer's workload for certain month (username={}): {}, {}",
-          username, year, Month.of(month));
-    } else {
-      log.info("Starting to select trainers' workload for certain month: {}, {}", year, Month.of(month));
-    }
+  public List<TrainerWorkloadDto> retrieveTrainersWorkloadForMonth(
+      int year, int month, String firstName, String lastName) {
 
-    return trainerService.retrieveTrainersWorkloadForMonth(year, month, username);
+    log.info("Starting to select trainers' workload for certain month: year={}, month={}, firstName={}, lastName={}",
+        year, Month.of(month), firstName, lastName);
+
+    return trainerService.retrieveTrainersWorkloadForMonth(year, month, firstName, lastName);
   }
 }

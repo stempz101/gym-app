@@ -116,7 +116,7 @@ services:
 
   main-microservice:
     container_name: main-microservice
-    image: stempz/gym-app-main-microservice:1.0.2
+    image: stempz/gym-app-main-microservice:1.0.3
     ports:
       - '8080:8080'
     environment:
@@ -135,7 +135,7 @@ services:
 
   reports-microservice:
     container_name: reports-microservice
-    image: stempz/gym-app-reports-microservice:1.0.2
+    image: stempz/gym-app-reports-microservice:1.0.3
     ports:
       - '8081:8081'
     environment:

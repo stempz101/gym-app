@@ -14,17 +14,144 @@ services:
     volumes:
       - gym-volume:/var/lib/postgresql/data
 
-  main-app:
-    container_name: main-app
-    image: stempz/gym-app:1.0.2
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-volume:/data
+
+  redisinsight:
+    container_name: redisinsight
+    image: redislabs/redisinsight:latest
+    ports:
+      - '5540:5540'
+
+  mongo1:
+    container_name: mongo1
+    image: mongo:latest
+    entrypoint: ["bash", "mongo-entrypoint.sh"]
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--port", "27017", "--keyFile", "/etc/mongodb/pki/keyfile"]
+    ports:
+      - 27017:27017
+    volumes:
+      - ./config/mongo_keyfile:/etc/mongodb/pki/keyfile
+      - ./scripts/mongo-entrypoint.sh:/mongo-entrypoint.sh
+      - gym-reports-volume1:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: my_user
+      MONGO_INITDB_ROOT_PASSWORD: my_password
+
+  mongo2:
+    container_name: mongo2
+    image: mongo:latest
+    entrypoint: ["bash", "mongo-entrypoint.sh"]
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--port", "27018", "--keyFile", "/etc/mongodb/pki/keyfile" ]
+    ports:
+      - 27018:27018
+    volumes:
+      - ./config/mongo_keyfile:/etc/mongodb/pki/keyfile
+      - ./scripts/mongo-entrypoint.sh:/mongo-entrypoint.sh
+      - gym-reports-volume2:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: my_user
+      MONGO_INITDB_ROOT_PASSWORD: my_password
+
+  mongo3:
+    container_name: mongo3
+    image: mongo:latest
+    entrypoint: ["bash", "mongo-entrypoint.sh"]
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--port", "27019", "--keyFile", "/etc/mongodb/pki/keyfile" ]
+    ports:
+      - 27019:27019
+    volumes:
+      - ./config/mongo_keyfile:/etc/mongodb/pki/keyfile
+      - ./scripts/mongo-entrypoint.sh:/mongo-entrypoint.sh
+      - gym-reports-volume3:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: my_user
+      MONGO_INITDB_ROOT_PASSWORD: my_password
+
+  mongo-setup:
+    image: mongo:latest
+    container_name: mongo-setup
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    restart: on-failure
+    entrypoint: ["bash", "/mongo-rs-init.sh"]
+    volumes:
+      - ./scripts/mongo-rs-init.sh:/mongo-rs-init.sh
+
+  mongo-ui:
+    container_name: mongo-ui
+    image: mongo-express:latest
+    ports:
+      - '27000:8081'
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://my_user:my_password@mongo1:27017,mongo2:27018,mongo3:27019/?replicaSet=rs0
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+
+  activemq:
+    container_name: activemq
+    image: rmohr/activemq:latest
+    ports:
+      - '61616:61616'
+      - '8161:8161'
+
+  discovery-microservice:
+    container_name: discovery-microservice
+    image: stempz/gym-app-discovery-microservice:1.0.2
+    ports:
+      - '8761:8761'
+    environment:
+      DISCOVERY_HOST: discovery-microservice
+
+  main-microservice:
+    container_name: main-microservice
+    image: stempz/gym-app-main-microservice:1.0.3
     ports:
       - '8080:8080'
     environment:
       DB_URL: jdbc:postgresql://postgres/gym_db
       DB_USER: user
       DB_PASSWORD: pass
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ACTIVEMQ_URL: tcp://activemq:61616
+      EUREKA_URI: http://discovery-microservice:8761/eureka
     depends_on:
       - postgres
+      - redis
+      - activemq
+      - discovery-microservice
+
+  reports-microservice:
+    container_name: reports-microservice
+    image: stempz/gym-app-reports-microservice:1.0.3
+    ports:
+      - '8081:8081'
+    environment:
+      MONGODB_HOSTS: mongo1:27017,mongo2:27018,mongo3:27019
+      MONGODB_USER: my_user
+      MONGODB_PASSWORD: my_password
+      MONGODB_DATABASE: gym_db
+      MONGODB_RS: rs0
+      ACTIVEMQ_URL: tcp://activemq:61616
+      EUREKA_URI: http://discovery-microservice:8761/eureka
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+      - activemq
+      - discovery-microservice
 
   prometheus:
     container_name: prometheus
@@ -32,9 +159,13 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./main-microservice/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     depends_on:
-      - main-app
+      - main-microservice
 
 volumes:
   gym-volume:
+  gym-reports-volume1:
+  gym-reports-volume2:
+  gym-reports-volume3:
+  redis-volume:

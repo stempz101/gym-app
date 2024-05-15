@@ -69,6 +69,9 @@ public class TrainerWorkloadService {
   }
 
   private void addTrainingDuration(TrainerWorkloadUpdateDto updateDto) {
+    log.info("Adding training duration (duration={}) to the trainer record (username={})",
+        updateDto.getTrainingDuration(), updateDto.getUsername());
+
     TrainerWorkload trainerWorkload = trainerWorkloadRepository
         .findById(updateDto.getUsername())
         .orElseGet(() -> trainerWorkloadMapper.toTrainerWorkload(updateDto));
@@ -85,6 +88,9 @@ public class TrainerWorkloadService {
   }
 
   private void subtractTrainingDuration(TrainerWorkloadUpdateDto updateDto) {
+    log.info("Subtracting training duration (duration={}) from the trainer record (username={})",
+        updateDto.getTrainingDuration(), updateDto.getUsername());
+
     trainerWorkloadRepository.findById(updateDto.getUsername()).ifPresent(trainerWorkload -> {
       int year = updateDto.getTrainingDate().getYear();
       Month month = updateDto.getTrainingDate().getMonth();

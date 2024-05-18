@@ -17,6 +17,8 @@ Before running the application with **docker-compose**, you need to generate a s
 scripts/mongo-keyfile.sh
 ```
 
+**!Warning!** Before executing docker-compose, be sure that all `.sh` files in "scripts" package have LF line endings.
+
 After that, you will be able to run the application using the following command:
 ```bash
 docker-compose run -d

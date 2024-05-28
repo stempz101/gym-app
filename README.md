@@ -21,5 +21,5 @@ scripts/mongo-keyfile.sh
 
 After that, you will be able to run the application using the following command:
 ```bash
-docker-compose run -d
+docker compose up -d
 ```

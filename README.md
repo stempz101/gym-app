@@ -1,7 +1,23 @@
 # Gym Application
 
 ## Navigation
+- [Technologies](#Technologies)
 - [How to run](#How-to-run)
+
+# Technologies
+- Java 17
+- Spring (Boot, Web, Data, Cloud (Eureka, Resilience4J), Actuator, Security)
+- OpenAPI 3
+- JUnit 5
+- Mockito
+- Cucumber
+- Testcontainers
+- PostgreSQL
+- MongoDB
+- Redis
+- Apache ActiveMQ
+- Prometheus
+- Docker
 
 # How to run
 ## Locally

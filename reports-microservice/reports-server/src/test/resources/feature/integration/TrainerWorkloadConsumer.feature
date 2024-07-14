@@ -1,32 +1,5 @@
 Feature: Trainer Workload Consumer
 
-  Scenario Outline: Get trainer's workload for a given month
-    Given fields to retrieve trainer workload as below:
-      | year      | <year>      |
-      | month     | <month>     |
-      | firstName | <firstName> |
-      | lastName  | <lastName>  |
-    When a message is sent to retrieve trainer workload
-    Then a response message should be sent with retrieved trainer workload
-
-    Examples:
-      | year | month | firstName | lastName |
-      | 2024 | MARCH | John      | Doe      |
-      | 2025 | MAY   | Sam       | Wilson   |
-
-  Scenario Outline: Get workload of all trainers for a given month
-    Given fields to retrieve trainer workload as below:
-      | year  | <year>  |
-      | month | <month> |
-    When a message is sent to retrieve trainer workload
-    Then a response message should be sent with retrieved trainer workload
-
-    Examples:
-      | year | month |
-      | 2024 | MARCH |
-      | 2024 | MAY   |
-      | 2025 | MAY   |
-
   Scenario: Update trainer workload
     Given a list of trainer records to update their workload:
     """json

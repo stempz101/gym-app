@@ -7,4 +7,8 @@ public class TrainerWorkloadUpdateException extends RuntimeException {
   public TrainerWorkloadUpdateException() {
     super(MESSAGE);
   }
+
+  public TrainerWorkloadUpdateException(Throwable cause) {
+    super(MESSAGE, cause);
+  }
 }

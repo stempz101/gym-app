@@ -9,6 +9,7 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
 import org.springframework.jms.connection.JmsTransactionManager;
 import org.springframework.jms.support.converter.MappingJackson2MessageConverter;
@@ -18,6 +19,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.util.ErrorHandler;
 
 @Configuration
+@Profile({"default", "dev"})
 public class JmsConfiguration {
 
   private static final Logger log = LoggerFactory.getLogger(JmsConfiguration.class);
@@ -29,6 +31,7 @@ public class JmsConfiguration {
   private String transactionIdHeader;
 
   @Bean
+  @Profile({"default", "dev"})
   public MessageConverter jacksonJmsMessageConverter(ObjectMapper objectMapper) {
     MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
     converter.setTargetType(MessageType.TEXT);
@@ -38,6 +41,7 @@ public class JmsConfiguration {
   }
 
   @Bean
+  @Profile({"default", "dev"})
   public DefaultJmsListenerContainerFactory jmsListenerContainerFactory(
       ConnectionFactory connectionFactory,
       MessageConverter jacksonJmsMessageConverter,
@@ -56,6 +60,7 @@ public class JmsConfiguration {
   }
 
   @Bean
+  @Profile({"default", "dev"})
   public ErrorHandler jmsErrorHandler() {
     return t -> {
       log.error("Handling error in listening for messages, error: " + t.getMessage(), t);
@@ -65,6 +70,7 @@ public class JmsConfiguration {
   }
 
   @Bean
+  @Profile({"default", "dev"})
   public PlatformTransactionManager jmsTransactionManager(ConnectionFactory connectionFactory) {
     return new JmsTransactionManager(connectionFactory);
   }

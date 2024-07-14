@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.hasLength;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.mockito.Mockito.mockStatic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -30,10 +29,7 @@ import io.cucumber.java.en.When;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
-import java.util.UUID;
-import org.mockito.MockedStatic;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jms.core.JmsTemplate;
@@ -54,9 +50,6 @@ public class IntegrationSteps {
 
   @Autowired
   private JmsTemplate jmsTemplate;
-
-  @Value("${application.messaging.queue.retrieve-trainer-workload.response}")
-  private String retrieveTrainerWorkloadResponseQueue;
 
   private Scenario scenario;
 
@@ -248,26 +241,6 @@ public class IntegrationSteps {
     context.setResult(result);
   }
 
-  @When("the user calls authorized end point {string} with method as 'GET' with following parameters in order to fetch workload from reports-microservice:")
-  public void the_user_calls_authorized_end_point_with_method_as_with_following_parameters_in_order_to_fetch_workload_from_reports_microservice(
-      String endPoint, Map<String, String> params) throws Exception {
-
-    try (MockedStatic<UUID> uuidUtils = mockStatic(UUID.class)) {
-      uuidUtils.when(UUID::randomUUID).thenReturn(context.getCorrelationId());
-
-      sendWorkloadResultToResponseQueue(context.getMessageBodyForBroker(), context.getCorrelationId());
-
-      MockHttpServletRequestBuilder requestBuilder = get(endPoint);
-      params.forEach(requestBuilder::param);
-      requestBuilder.header(HttpHeaders.AUTHORIZATION, "Bearer " + context.getToken());
-
-      ResultActions result = mockMvc.perform(requestBuilder);
-      result.andDo(print());
-
-      context.setResult(result);
-    }
-  }
-
   @Then("the response returned with status code as {int}")
   public void the_response_returned_with_status_code_as(Integer statusCode) throws Exception {
     context.getResult().andExpect(status().is(statusCode));
@@ -318,13 +291,5 @@ public class IntegrationSteps {
         jsonPath("$.firstName").value(firstName),
         jsonPath("$.lastName").value(lastName)
     );
-  }
-
-  private void sendWorkloadResultToResponseQueue(Object body, UUID correlationId) {
-    jmsTemplate.convertAndSend(retrieveTrainerWorkloadResponseQueue, body,
-        message -> {
-          message.setJMSCorrelationID(correlationId.toString());
-          return message;
-        });
   }
 }

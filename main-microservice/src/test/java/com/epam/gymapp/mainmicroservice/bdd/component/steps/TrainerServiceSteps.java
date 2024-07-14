@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mockStatic;
 
 import com.epam.gymapp.mainmicroservice.bdd.component.context.CucumberComponentContext;
 import com.epam.gymapp.mainmicroservice.dto.TrainerInfoDto;
@@ -13,20 +12,12 @@ import com.epam.gymapp.mainmicroservice.dto.TrainerUpdateDto;
 import com.epam.gymapp.mainmicroservice.dto.TrainingInfoDto;
 import com.epam.gymapp.mainmicroservice.exception.TrainerNotFoundException;
 import com.epam.gymapp.mainmicroservice.service.TrainerService;
-import com.epam.gymapp.mainmicroservice.test.utils.TrainerTestUtil;
-import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadDto;
-import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadDtoList;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import java.time.LocalDate;
-import java.time.Month;
 import java.util.List;
-import java.util.UUID;
-import org.mockito.MockedStatic;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.jms.core.JmsTemplate;
 
 public class TrainerServiceSteps {
 
@@ -34,24 +25,13 @@ public class TrainerServiceSteps {
   private TrainerService trainerService;
 
   @Autowired
-  private JmsTemplate jmsTemplate;
-
-  @Autowired
   private CucumberComponentContext context;
-
-  @Value("${application.messaging.queue.retrieve-trainer-workload.response}")
-  private String retrieveTrainerWorkloadResponseQueue;
 
   private TrainerUpdateDto trainerUpdateDto;
   private TrainerInfoDto trainerInfo;
   private List<TrainerInfoDto> trainerInfoList;
   private List<TrainerShortInfoDto> trainerShortInfoList;
   private List<TrainingInfoDto> trainingInfoList;
-  private List<TrainerWorkloadDto> expectedTrainerWorkloadList;
-  private List<TrainerWorkloadDto> resultTrainerWorkloadList;
-  private TrainerWorkloadDto trainerWorkload;
-
-  private UUID correlationId;
 
   @Given("a trainer exists with username {string}")
   public void a_trainer_exists_with_username(String username) {
@@ -92,36 +72,6 @@ public class TrainerServiceSteps {
     context.setFromDate(fromDate);
     context.setToDate(toDate);
     context.setTraineeName(traineeName);
-  }
-
-  @Given("a trainer with username {string} has {long} working hours for the month {string} in {int}")
-  public void a_trainer_with_username_has_working_hours_for_the_month_in(
-      String username, Long trainerWorkingHours, String workloadMonth, Integer workloadYear) {
-    TrainerInfoDto trainerInfoDto = trainerService.selectTrainer(username);
-
-    trainerWorkload = TrainerWorkloadDto.builder()
-        .username(username)
-        .firstName(trainerInfoDto.getFirstName())
-        .lastName(trainerInfoDto.getLastName())
-        .isActive(trainerInfoDto.isActive())
-        .year(workloadYear)
-        .month(Month.valueOf(workloadMonth))
-        .duration(trainerWorkingHours)
-        .build();
-
-    expectedTrainerWorkloadList = List.of(trainerWorkload);
-  }
-
-  @Given("there are trainers with workload for the month {string} in {int}")
-  public void there_are_trainers_with_workload_for_the_month_in(
-      String workloadMonth, Integer workloadYear) {
-    int month = Month.valueOf(workloadMonth).getValue();
-    TrainerWorkloadDto trainerWorkloadDto1 = TrainerTestUtil
-        .getTrainerWorkloadDto1(workloadYear, month, 120);
-    TrainerWorkloadDto trainerWorkloadDto2 = TrainerTestUtil
-        .getTrainerWorkloadDto2(workloadYear, month, 340);
-
-    expectedTrainerWorkloadList = List.of(trainerWorkloadDto1, trainerWorkloadDto2);
   }
 
   @When("a request to fetch all trainers is made")
@@ -172,43 +122,6 @@ public class TrainerServiceSteps {
         context.getTraineeUsername());
   }
 
-  @When("a request to retrieve workload by name {string} {string} for {string} {int} is made")
-  public void a_request_to_retrieve_s_workload_for_for_is_made(
-      String firstName, String lastName, String workloadMonth, Integer workloadYear) {
-    UUID correlationId = UUID.randomUUID();
-
-    try (MockedStatic<UUID> uuidUtils = mockStatic(UUID.class)) {
-      uuidUtils.when(UUID::randomUUID).thenReturn(correlationId);
-
-      sendWorkloadResultToResponseQueue(expectedTrainerWorkloadList, correlationId);
-
-      resultTrainerWorkloadList = trainerService.retrieveTrainersWorkloadForMonth(
-          workloadYear, Month.valueOf(workloadMonth).getValue(), firstName, lastName);
-    }
-  }
-
-  @When("a request to retrieve workload for all trainers for {string} {int} is made")
-  public void a_request_to_retrieve_workload_for_all_trainers_for_is_made(
-      String workloadMonth, Integer workloadYear) {
-    UUID correlationId = UUID.randomUUID();
-
-    try (MockedStatic<UUID> uuidUtils = mockStatic(UUID.class)) {
-      uuidUtils.when(UUID::randomUUID).thenReturn(correlationId);
-
-      sendWorkloadResultToResponseQueue(expectedTrainerWorkloadList, correlationId);
-
-      resultTrainerWorkloadList = trainerService.retrieveTrainersWorkloadForMonth(
-          workloadYear, Month.valueOf(workloadMonth).getValue(), null, null);
-    }
-  }
-
-  @When("a request to retrieve workload for all trainers for {string} {int} is made with no response after")
-  public void a_request_to_retrieve_workload_for_all_trainers_for_is_made_with_no_response_after(
-      String workloadMonth, Integer workloadYear) {
-    resultTrainerWorkloadList = trainerService.retrieveTrainersWorkloadForMonth(
-        workloadYear, Month.valueOf(workloadMonth).getValue(), null, null);
-  }
-
   @Then("a list of all trainers is returned")
   public void a_list_of_all_trainers_is_returned() {
     assertNotNull(trainerInfoList);
@@ -246,34 +159,5 @@ public class TrainerServiceSteps {
   public void the_unassigned_trainers_are_returned() {
     assertNotNull(trainerShortInfoList);
     assertFalse(trainerShortInfoList.isEmpty());
-  }
-
-  @Then("the correct workload data is retrieved")
-  public void the_correct_workload_data_is_retrieved() {
-    assertEquals(expectedTrainerWorkloadList, resultTrainerWorkloadList);
-  }
-
-  @Then("the fallback workload data response is retrieved")
-  public void the_fallback_workload_data_response_is_retrieved() {
-    TrainerWorkloadDto trainerWorkloadDto = expectedTrainerWorkloadList.get(0);
-
-    int workloadYear = trainerWorkloadDto.getYear();
-    int workloadMonth = trainerWorkloadDto.getMonth().getValue();
-
-    TrainerWorkloadDto fallbackObject = TrainerWorkloadDto.getFallbackObject(
-        workloadYear, workloadMonth, null, null);
-    List<TrainerWorkloadDto> workloadListWithFallbackResult = List.of(fallbackObject);
-
-    assertEquals(workloadListWithFallbackResult, resultTrainerWorkloadList);
-  }
-
-  private void sendWorkloadResultToResponseQueue(
-      List<TrainerWorkloadDto> trainerWorkloadList, UUID correlationId) {
-    jmsTemplate.convertAndSend(retrieveTrainerWorkloadResponseQueue,
-        new TrainerWorkloadDtoList(expectedTrainerWorkloadList),
-        message -> {
-          message.setJMSCorrelationID(correlationId.toString());
-          return message;
-        });
   }
 }

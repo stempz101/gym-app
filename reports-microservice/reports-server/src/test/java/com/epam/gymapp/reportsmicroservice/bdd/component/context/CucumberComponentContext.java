@@ -13,11 +13,11 @@ public class CucumberComponentContext {
   private String trainerUsername;
   private String trainerFirstName;
   private String trainerLastName;
-  private Month workloadMonth;
+  private int workloadMonth;
   private int workloadYear;
   private long currentWorkingHours;
 
   public void setWorkloadMonth(String month) {
-    this.workloadMonth = Month.valueOf(month);
+    this.workloadMonth = Month.valueOf(month).getValue();
   }
 }

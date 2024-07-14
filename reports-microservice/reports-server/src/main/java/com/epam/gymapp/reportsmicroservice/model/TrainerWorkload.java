@@ -1,8 +1,7 @@
 package com.epam.gymapp.reportsmicroservice.model;
 
-import java.time.Month;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,30 +10,58 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttribute;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecondaryPartitionKey;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecondarySortKey;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortKey;
 
+@DynamoDbBean
 @Document
 @Data
 @Builder
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 public class TrainerWorkload {
 
   @Id
-  private String username;
-
+  protected String username;
+  protected String status;
   @Indexed
-  private String firstName;
-
+  protected String firstName;
   @Indexed
-  private String lastName;
+  protected String lastName;
+  protected List<YearSummary> years;
 
-  private boolean isActive;
+  @DynamoDbPartitionKey
+  @DynamoDbAttribute("username")
+  public String getUsername() {
+    return username;
+  }
 
-  private Map<Integer, Map<Month, Long>> years;
+  @DynamoDbSortKey
+  @DynamoDbAttribute("status")
+  public String getStatus() {
+    return status;
+  }
 
-  public Map<Integer, Map<Month, Long>> getYears() {
+  @DynamoDbSecondaryPartitionKey(indexNames = "TrainerName-Index")
+  @DynamoDbAttribute("firstName")
+  public String getFirstName() {
+    return firstName;
+  }
+
+  @DynamoDbSecondarySortKey(indexNames = "TrainerName-Index")
+  @DynamoDbAttribute("lastName")
+  public String getLastName() {
+    return lastName;
+  }
+
+  @DynamoDbAttribute("years")
+  public List<YearSummary> getYears() {
     if (years == null) {
-      years = new HashMap<>();
+      years = new ArrayList<>();
     }
     return years;
   }
@@ -48,13 +75,14 @@ public class TrainerWorkload {
       return false;
     }
     TrainerWorkload that = (TrainerWorkload) object;
-    return isActive == that.isActive && Objects.equals(username, that.username)
-        && Objects.equals(firstName, that.firstName) && Objects.equals(lastName,
-        that.lastName) && Objects.equals(years, that.years);
+    return Objects.equals(username, that.username) && Objects.equals(status,
+        that.status) && Objects.equals(firstName, that.firstName)
+        && Objects.equals(lastName, that.lastName) && Objects.equals(years,
+        that.years);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(username, firstName, lastName, isActive, years);
+    return Objects.hash(username, status, firstName, lastName, years);
   }
 }

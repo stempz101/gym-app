@@ -2,7 +2,7 @@ package com.epam.gymapp.reportsmicroservice.bdd.integration;
 
 import com.epam.gymapp.reportsmicroservice.ReportsMicroserviceApplication;
 import com.epam.gymapp.reportsmicroservice.bdd.config.CucumberSpringConfiguration;
-import com.epam.gymapp.reportsmicroservice.repository.TrainerWorkloadRepository;
+import com.epam.gymapp.reportsmicroservice.repository.dev.TrainerWorkloadMongoRepository;
 import io.cucumber.spring.CucumberContextConfiguration;
 import jakarta.jms.ConnectionFactory;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,7 +17,7 @@ import org.springframework.jms.support.converter.MessageConverter;
 public class CucumberIntegrationTestConfiguration extends CucumberSpringConfiguration {
 
   @SpyBean
-  private TrainerWorkloadRepository trainerWorkloadRepository;
+  private TrainerWorkloadMongoRepository trainerWorkloadRepository;
 
   @Bean
   public JmsTemplate jmsTemplate(ConnectionFactory connectionFactory,

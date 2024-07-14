@@ -141,37 +141,3 @@ Feature: Trainer management API
   Scenario: Attempt to select trainer's trainings without authorization
     When the user calls end point "/api/trainers/trainings" with method as 'GET'
     Then the response returned with status code as 401
-
-  Scenario: Get trainer's workload for a given month
-    Given the predefined trainer's workload data for a given month as below:
-      | username | Jessica.Rodriguez2 |
-      | year     | 2024               |
-      | month    | MARCH              |
-      | duration | 120                |
-    When the user calls authorized end point "/api/trainers/workload" with method as 'GET' with following parameters in order to fetch workload from reports-microservice:
-      | year      | 2024      |
-      | month     | 3         |
-      | firstName | Jessica   |
-      | lastName  | Rodriguez |
-    Then the response returned with status code as 200
-    * the response data should include a not empty list
-
-  Scenario: Get trainer's workload for a given month when there is no response
-    When the user calls authorized end point "/api/trainers/workload" with method as 'GET' with following parameters:
-      | year      | 2024      |
-      | month     | 3         |
-      | firstName | Jessica   |
-      | lastName  | Rodriguez |
-    Then the response returned with status code as 200
-    * the response data should include a not empty list
-
-  Scenario: Attempt to get trainer's workload without required parameters
-    When the user calls authorized end point "/api/trainers/workload" with method as 'GET' with following parameters:
-      | year  |  |
-      | month |  |
-    Then the response returned with status code as 400
-
-  @skipAuthentication
-  Scenario: Attempt to select trainer's trainings without authorization
-    When the user calls end point "/api/trainers/workload" with method as 'GET'
-    Then the response returned with status code as 401

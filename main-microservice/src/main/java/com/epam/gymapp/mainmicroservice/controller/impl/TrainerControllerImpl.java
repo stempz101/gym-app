@@ -7,9 +7,7 @@ import com.epam.gymapp.mainmicroservice.dto.TrainerShortInfoDto;
 import com.epam.gymapp.mainmicroservice.dto.TrainerUpdateDto;
 import com.epam.gymapp.mainmicroservice.dto.TrainingInfoDto;
 import com.epam.gymapp.mainmicroservice.service.TrainerService;
-import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadDto;
 import java.time.LocalDate;
-import java.time.Month;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -57,15 +55,5 @@ public class TrainerControllerImpl implements TrainerController {
     LocalDate parsedToDate = ControllerUtils.parseStringToLocalDate(toDate);
 
     return trainerService.findTrainerTrainings(trainerUsername, parsedFromDate, parsedToDate, traineeName);
-  }
-
-  @Override
-  public List<TrainerWorkloadDto> retrieveTrainersWorkloadForMonth(
-      int year, int month, String firstName, String lastName) {
-
-    log.info("Starting to select trainers' workload for certain month: year={}, month={}, firstName={}, lastName={}",
-        year, Month.of(month), firstName, lastName);
-
-    return trainerService.retrieveTrainersWorkloadForMonth(year, month, firstName, lastName);
   }
 }

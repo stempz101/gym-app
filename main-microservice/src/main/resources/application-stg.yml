@@ -1,4 +1,7 @@
 spring:
+  datasource:
+    hikari:
+      max-lifetime: 840000
   jpa:
     hibernate:
       ddl-auto: update

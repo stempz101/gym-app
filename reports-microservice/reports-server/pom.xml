@@ -17,6 +17,7 @@
     <spring-cloud.version>2023.0.1</spring-cloud.version>
     <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
     <io.cucumber.version>7.17.0</io.cucumber.version>
+    <spring-cloud-aws.version>3.1.1</spring-cloud-aws.version>
   </properties>
   <dependencies>
     <dependency>
@@ -39,10 +40,22 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-activemq</artifactId>
     </dependency>
-
     <dependency>
       <groupId>org.springframework.cloud</groupId>
       <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.awspring.cloud</groupId>
+      <artifactId>spring-cloud-aws-starter</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.awspring.cloud</groupId>
+      <artifactId>spring-cloud-aws-starter-sqs</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.awspring.cloud</groupId>
+      <artifactId>spring-cloud-aws-starter-dynamodb</artifactId>
     </dependency>
 
     <dependency>
@@ -101,12 +114,20 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
         <groupId>org.springframework.cloud</groupId>
         <artifactId>spring-cloud-dependencies</artifactId>
         <version>${spring-cloud.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.awspring.cloud</groupId>
+        <artifactId>spring-cloud-aws</artifactId>
+        <version>${spring-cloud-aws.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>

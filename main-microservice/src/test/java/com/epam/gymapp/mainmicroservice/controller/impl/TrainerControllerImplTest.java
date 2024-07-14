@@ -4,7 +4,6 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -29,10 +28,8 @@ import com.epam.gymapp.mainmicroservice.test.utils.JwtTokenTestUtil;
 import com.epam.gymapp.mainmicroservice.test.utils.TrainerTestUtil;
 import com.epam.gymapp.mainmicroservice.test.utils.TrainingTestUtil;
 import com.epam.gymapp.mainmicroservice.test.utils.UserTestUtil;
-import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
@@ -1269,193 +1266,6 @@ public class TrainerControllerImplTest {
         .param("fromDate", fromDate)
         .param("toDate", toDate)
         .param("traineeName", traineeName)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpect(status().isInternalServerError());
-  }
-
-  @Test
-  void retrieveTrainersWorkloadForMonth_Success() throws Exception {
-    // Given
-    int year = 2024;
-    int month = 4;
-    String firstName = UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_1;
-    String lastName = UserTestUtil.TEST_TRAINER_USER_LAST_NAME_1;
-    TrainerWorkloadDto trainerWorkloadDto1 = TrainerTestUtil
-        .getTrainerWorkloadDto1(2024, 4, 120);
-    List<TrainerWorkloadDto> expectedResult = Collections.singletonList(trainerWorkloadDto1);
-    User user = UserTestUtil.getTraineeUser1();
-    String token = jwtTokenTestUtil.generateToken(user);
-    SessionUser sessionUser = new SessionUser(user.getUsername(), user.getCreatedAt());
-
-    // When
-    when(sessionUserRepository.findById(any())).thenReturn(Optional.of(sessionUser));
-    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(user));
-    when(trainerService.retrieveTrainersWorkloadForMonth(anyInt(), anyInt(), any(), any()))
-        .thenReturn(expectedResult);
-
-    ResultActions result = mockMvc.perform(get("/api/trainers/workload")
-        .param("year", String.valueOf(year))
-        .param("month", String.valueOf(month))
-        .param("firstName", firstName)
-        .param("lastName", lastName)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isOk(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-
-            // Item #1
-            jsonPath("$[0].username").value(expectedResult.get(0).getUsername()),
-            jsonPath("$[0].firstName").value(expectedResult.get(0).getFirstName()),
-            jsonPath("$[0].lastName").value(expectedResult.get(0).getLastName()),
-            jsonPath("$[0].active").value(expectedResult.get(0).isActive()),
-            jsonPath("$[0].year").value(expectedResult.get(0).getYear()),
-            jsonPath("$[0].month").value(expectedResult.get(0).getMonth().toString()),
-            jsonPath("$[0].duration").value(expectedResult.get(0).getDuration())
-        );
-  }
-
-  @Test
-  void retrieveTrainersWorkloadForMonth_MissingRequiredParameters_Failure() throws Exception {
-    // Given
-    User user = UserTestUtil.getTraineeUser1();
-    String token = jwtTokenTestUtil.generateToken(user);
-    SessionUser sessionUser = new SessionUser(user.getUsername(), user.getCreatedAt());
-
-    // When
-    when(sessionUserRepository.findById(any())).thenReturn(Optional.of(sessionUser));
-    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(user));
-
-    ResultActions result = mockMvc.perform(get("/api/trainers/workload")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isBadRequest(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value(notNullValue())
-        );
-  }
-
-  @Test
-  void retrieveTrainersWorkloadForMonth_NoJwtToken_Failure() throws Exception {
-    // Given
-    int year = 2024;
-    int month = 4;
-    String firstName = UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_1;
-    String lastName = UserTestUtil.TEST_TRAINER_USER_LAST_NAME_1;
-
-    // When
-    ResultActions result = mockMvc.perform(get("/api/trainers/workload")
-        .param("year", String.valueOf(year))
-        .param("month", String.valueOf(month))
-        .param("firstName", firstName)
-        .param("lastName", lastName));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isUnauthorized(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Full authentication is required to access this resource")
-        );
-  }
-
-  @Test
-  void retrieveTrainersWorkloadForMonth_JwtTokenRevoked_Failure() throws Exception {
-    // Given
-    int year = 2024;
-    int month = 4;
-    String firstName = UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_1;
-    String lastName = UserTestUtil.TEST_TRAINER_USER_LAST_NAME_1;
-    User user = UserTestUtil.getTraineeUser1();
-    String token = jwtTokenTestUtil.generateToken(user);
-
-    // When
-    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(user));
-    when(sessionUserRepository.findById(any())).thenReturn(Optional.empty());
-
-    ResultActions result = mockMvc.perform(get("/api/trainers/workload")
-        .param("year", String.valueOf(year))
-        .param("month", String.valueOf(month))
-        .param("firstName", firstName)
-        .param("lastName", lastName)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isUnauthorized(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value("Full authentication is required to access this resource")
-        );
-  }
-
-  @Test
-  void retrieveTrainersWorkloadForMonth_JwtTokenExpired_Failure() throws Exception {
-    // Given
-    int year = 2024;
-    int month = 4;
-    String firstName = UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_1;
-    String lastName = UserTestUtil.TEST_TRAINER_USER_LAST_NAME_1;
-    String token = jwtTokenTestUtil.generateExpiredToken(new HashMap<>(), UserTestUtil.getTraineeUser1());
-
-    // When
-    ResultActions result = mockMvc.perform(get("/api/trainers/workload")
-        .param("year", String.valueOf(year))
-        .param("month", String.valueOf(month))
-        .param("firstName", firstName)
-        .param("lastName", lastName)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
-
-    // Then
-    result
-        .andDo(print())
-        .andExpectAll(
-            status().isUnauthorized(),
-            content().contentType(MediaType.APPLICATION_JSON),
-            jsonPath("$").value(hasSize(1)),
-            jsonPath("$[0].message").value(notNullValue())
-        );
-  }
-
-  @Test
-  void retrieveTrainersWorkloadForMonth_IfException_Failure() throws Exception {
-    // Given
-    int year = 2024;
-    int month = 4;
-    String firstName = UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_1;
-    String lastName = UserTestUtil.TEST_TRAINER_USER_LAST_NAME_1;
-    User user = UserTestUtil.getTraineeUser1();
-    String token = jwtTokenTestUtil.generateToken(user);
-    SessionUser sessionUser = new SessionUser(user.getUsername(), user.getCreatedAt());
-
-    // When
-    when(sessionUserRepository.findById(any())).thenReturn(Optional.of(sessionUser));
-    when(userRepository.findByUsernameIgnoreCase(any())).thenReturn(Optional.of(user));
-    when(trainerService.retrieveTrainersWorkloadForMonth(anyInt(), anyInt(), any(), any()))
-        .thenThrow(RuntimeException.class);
-
-    ResultActions result = mockMvc.perform(get("/api/trainers/workload")
-        .param("year", String.valueOf(year))
-        .param("month", String.valueOf(month))
-        .param("firstName", firstName)
-        .param("lastName", lastName)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
 
     // Then

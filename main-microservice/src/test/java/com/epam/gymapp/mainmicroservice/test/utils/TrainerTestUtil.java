@@ -8,10 +8,8 @@ import com.epam.gymapp.mainmicroservice.model.Trainee;
 import com.epam.gymapp.mainmicroservice.model.Trainer;
 import com.epam.gymapp.mainmicroservice.model.User;
 import com.epam.gymapp.mainmicroservice.model.custom.TrainerWorkload;
-import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadDto;
 import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadUpdateDto;
 import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadUpdateDto.ActionType;
-import java.time.Month;
 import java.util.List;
 
 public class TrainerTestUtil {
@@ -215,30 +213,6 @@ public class TrainerTestUtil {
         .trainingYear(TrainingTestUtil.TEST_TRAINING_DATE_3.getYear())
         .trainingMonth(TrainingTestUtil.TEST_TRAINING_DATE_3.getMonthValue())
         .trainingDuration((long) TrainingTestUtil.TEST_TRAINING_DURATION_3)
-        .build();
-  }
-
-  public static TrainerWorkloadDto getTrainerWorkloadDto1(int year, int month, long duration) {
-    return TrainerWorkloadDto.builder()
-        .username(UserTestUtil.TEST_TRAINER_USER_USERNAME_1)
-        .firstName(UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_1)
-        .lastName(UserTestUtil.TEST_TRAINER_USER_LAST_NAME_1)
-        .isActive(UserTestUtil.TEST_TRAINEE_USER_IS_ACTIVE_1)
-        .year(year)
-        .month(Month.of(month))
-        .duration(duration)
-        .build();
-  }
-
-  public static TrainerWorkloadDto getTrainerWorkloadDto2(int year, int month, long duration) {
-    return TrainerWorkloadDto.builder()
-        .username(UserTestUtil.TEST_TRAINER_USER_USERNAME_2)
-        .firstName(UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_2)
-        .lastName(UserTestUtil.TEST_TRAINER_USER_LAST_NAME_2)
-        .isActive(UserTestUtil.TEST_TRAINEE_USER_IS_ACTIVE_2)
-        .year(year)
-        .month(Month.of(month))
-        .duration(duration)
         .build();
   }
 

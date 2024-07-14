@@ -49,18 +49,3 @@ Feature: Trainer Service
     Given a trainee exists with username "Christopher.Lee4"
     When a request to get unassigned trainee's trainers is made
     Then the unassigned trainers are returned
-
-  Scenario: Get trainer's workload for a given month
-    Given a trainer with username "John.Doe" has 120 working hours for the month "MARCH" in 2024
-    When a request to retrieve workload by name "John" "Doe" for "MARCH" 2024 is made
-    Then the correct workload data is retrieved
-
-  Scenario: Get workload for all trainers for a given month
-    Given there are trainers with workload for the month "MARCH" in 2024
-    When a request to retrieve workload for all trainers for "MARCH" 2024 is made
-    Then the correct workload data is retrieved
-
-  Scenario: Get workload data for all trainers for a given month when there is no response
-    Given there are trainers with workload for the month "MAY" in 2024
-    When a request to retrieve workload for all trainers for "MAY" 2024 is made with no response after
-    Then the fallback workload data response is retrieved

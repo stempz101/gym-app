@@ -5,7 +5,6 @@ import com.epam.gymapp.mainmicroservice.dto.TrainerInfoDto;
 import com.epam.gymapp.mainmicroservice.dto.TrainerShortInfoDto;
 import com.epam.gymapp.mainmicroservice.dto.TrainerUpdateDto;
 import com.epam.gymapp.mainmicroservice.dto.TrainingInfoDto;
-import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -149,33 +148,4 @@ public interface TrainerController {
       @RequestParam(name = "fromDate", required = false) String fromDate,
       @RequestParam(name = "toDate", required = false) String toDate,
       @RequestParam(name = "traineeName", required = false) String traineeName);
-
-  @GetMapping("/workload")
-  @Operation(summary = "Retrieve trainers' workload for certain month", tags = {"Trainers"},
-      security = @SecurityRequirement(name = "bearerAuth"), responses = {
-      @ApiResponse(responseCode = "200", description = "Trainers' workload successfully returned",
-          content = @Content(
-              mediaType = MediaType.APPLICATION_JSON_VALUE,
-              array = @ArraySchema(schema = @Schema(implementation = TrainerWorkloadDto.class))
-          )
-      ),
-      @ApiResponse(responseCode = "400", description = "Missing required parameters",
-          content = @Content(
-              mediaType = MediaType.APPLICATION_JSON_VALUE,
-              array = @ArraySchema(schema = @Schema(implementation = ErrorMessageDto.class))
-          )
-      ),
-      @ApiResponse(responseCode = "401", description = "Attempted unauthorized access",
-          content = @Content(
-              mediaType = MediaType.APPLICATION_JSON_VALUE,
-              array = @ArraySchema(schema = @Schema(implementation = ErrorMessageDto.class))
-          )
-      ),
-      @ApiResponse(responseCode = "500", description = "Application failed to process the request")
-  })
-  List<TrainerWorkloadDto> retrieveTrainersWorkloadForMonth(
-      @RequestParam(name = "year") int year,
-      @RequestParam(name = "month") int month,
-      @RequestParam(name = "firstName", required = false) String firstName,
-      @RequestParam(name = "lastName", required = false) String lastName);
 }

@@ -17,9 +17,7 @@ import com.epam.gymapp.mainmicroservice.repository.TrainingRepository;
 import com.epam.gymapp.mainmicroservice.repository.TrainingTypeRepository;
 import com.epam.gymapp.mainmicroservice.repository.UserRepository;
 import com.epam.gymapp.mainmicroservice.utils.UserUtils;
-import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadDto;
 import java.time.LocalDate;
-import java.time.Month;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -130,14 +128,5 @@ public class TrainerService {
   private void setSpecializationIfExists(Trainer trainer) {
     trainingTypeRepository.findByName(trainer.getSpecialization().getName())
         .ifPresent(trainer::setSpecialization);
-  }
-
-  public List<TrainerWorkloadDto> retrieveTrainersWorkloadForMonth(
-      int year, int month, String firstName, String lastName) {
-
-    log.debug("Sending a request to retrieve trainers' workload for certain month: {}, {}",
-        year, Month.of(month));
-
-    return reportsProducer.retrieveTrainersWorkloadForMonth(year, month, firstName, lastName);
   }
 }

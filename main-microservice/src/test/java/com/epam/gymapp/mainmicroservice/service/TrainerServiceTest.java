@@ -25,7 +25,6 @@ import com.epam.gymapp.mainmicroservice.mapper.TrainingMapper;
 import com.epam.gymapp.mainmicroservice.model.Trainer;
 import com.epam.gymapp.mainmicroservice.model.Training;
 import com.epam.gymapp.mainmicroservice.model.TrainingType;
-import com.epam.gymapp.mainmicroservice.producer.ReportsProducer;
 import com.epam.gymapp.mainmicroservice.repository.TrainerRepository;
 import com.epam.gymapp.mainmicroservice.repository.TrainingRepository;
 import com.epam.gymapp.mainmicroservice.repository.TrainingTypeRepository;
@@ -36,7 +35,6 @@ import com.epam.gymapp.mainmicroservice.test.utils.TrainingTestUtil;
 import com.epam.gymapp.mainmicroservice.test.utils.TrainingTypeTestUtil;
 import com.epam.gymapp.mainmicroservice.test.utils.UserTestUtil;
 import com.epam.gymapp.mainmicroservice.utils.UserUtils;
-import com.epam.gymapp.reportsmicroservice.dto.TrainerWorkloadDto;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
@@ -78,9 +76,6 @@ public class TrainerServiceTest {
 
   @Mock
   private JwtService jwtService;
-
-  @Mock
-  private ReportsProducer reportsProducer;
 
   @Test
   void createTrainer_Success() {
@@ -272,28 +267,5 @@ public class TrainerServiceTest {
         TrainerTestUtil.getTrainerShortInfoDto3(),
         TrainerTestUtil.getTrainerShortInfoDto4()
     ));
-  }
-
-  @Test
-  void retrieveTrainersWorkloadForMonth_Success() {
-    // Given
-    int year = 2024;
-    int month = 4;
-    String firstName = UserTestUtil.TEST_TRAINER_USER_FIRST_NAME_1;
-    String lastName = UserTestUtil.TEST_TRAINER_USER_LAST_NAME_1;
-    TrainerWorkloadDto trainerWorkloadDto1 = TrainerTestUtil
-        .getTrainerWorkloadDto1(2024, 4, 120);
-    List<TrainerWorkloadDto> expectedResult = Collections.singletonList(trainerWorkloadDto1);
-
-    // When
-    when(reportsProducer.retrieveTrainersWorkloadForMonth(anyInt(), anyInt(), any(), any()))
-        .thenReturn(expectedResult);
-
-    List<TrainerWorkloadDto> result = trainerService
-        .retrieveTrainersWorkloadForMonth(year, month, firstName, lastName);
-
-    // Then
-    assertThat(result, hasSize(expectedResult.size()));
-    assertThat(result, hasItems(trainerWorkloadDto1));
   }
 }

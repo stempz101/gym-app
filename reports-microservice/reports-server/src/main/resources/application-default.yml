@@ -1,0 +1,16 @@
+spring:
+  data:
+    mongodb:
+      uri: "mongodb://${MONGODB_USER:root}:${MONGODB_PASSWORD:example}@${MONGODB_HOSTS:localhost:27017}"
+      database: "${MONGODB_DATABASE:gym_db}"
+      replica-set-name: "${MONGODB_RS:rs0}"
+      auto-index-creation: true
+  activemq:
+    broker-url: "${ACTIVEMQ_URL:tcp://localhost:61616}"
+    user: "${ACTIVEMQ_USER:admin}"
+    password: "${ACTIVEMQ_PASSWORD:admin}"
+    packages:
+      trust-all: false
+      trusted: java.util,com.epam.reportsmicroservice.dto
+  jms:
+    pub-sub-domain: false

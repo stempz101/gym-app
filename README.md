@@ -18,6 +18,7 @@
 - Apache ActiveMQ
 - Prometheus
 - Docker
+- AWS (RDS, SQS, DynamoDB)
 
 # How to run
 ## Locally
